@@ -11,9 +11,10 @@
 
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import path    from 'path';
-import fs      from 'fs';
+import fs, { appendFile }      from 'fs';
 import { spawn }      from 'child_process';
 import { fileURLToPath } from 'url';
+import { rpc } from './discord-rpc/discord-rpc.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -261,7 +262,10 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  rpc.init();
+});
 
 app.on('window-all-closed', () => {
   if (serverProcess) {
