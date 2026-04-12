@@ -1,0 +1,29 @@
+node_modules/
+dist/
+out/
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+
+# Config utilisateur générée au runtime (userData)
+# Ne pas versionner — chaque install a le sien
+launcher-config.json
+
+# Electron cache
+.electron/
+
+# Build artifacts
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.nsis
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

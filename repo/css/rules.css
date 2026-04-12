@@ -1,0 +1,119 @@
+
+/* ═══════════════════════════════════════════════════════
+   § 1 · RESET & BASE
+   ═══════════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0; padding: 0;
+}
+
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  font-size: 14px;
+  background: var(--obsidian);
+  color: var(--parchment);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+/* ═══════════════════════════════════════════════════════
+   § 2 · DESIGN TOKENS
+   ═══════════════════════════════════════════════════════ */
+   /* — Métaux & Or — */
+
+:root {
+  --gold-pure:        #D4A842;
+  --gold:             #C9A84C;
+  --gold-light:       #E8C97A;
+  --gold-bright:      #F2D98A;
+  --gold-dark:        #7A5A10;
+  --gold-deep:        #4A3508;
+  --gold-faint:       rgba(201, 168, 76, 0.07);
+  --gold-glow:        rgba(201, 168, 76, 0.18);
+  --gold-border:      rgba(201, 168, 76, 0.20);
+  --gold-border-hot:  rgba(201, 168, 76, 0.45);
+  --silver:           #9AA8B8;
+  --silver-dark:      #5A6478;
+  --iron:             #3A3D45;
+  --steel:            #6A7280;
+
+  /* — Sang & Feu — */
+  --blood:            #7A1A1A;
+  --blood-dark:       #3E0C0C;
+  --blood-light:      #9B2525;
+  --blood-vivid:      #C0302A;
+  --ember:            #C05020;
+  --ember-glow:       rgba(192, 80, 32, 0.35);
+  --fire-tip:         #F5A030;
+
+  /* — Pierres & Terres — */
+  --void:             #060504;
+  --obsidian:         #0A0806;
+  --stone-black:      #0E0B08;
+  --stone-deep:       #131009;
+  --stone-dark:       #1A1610;
+  --stone-mid:        #241E15;
+  --stone-warm:       #302818;
+  --stone-light:      #3D3225;
+  --leather:          #2E1E0E;
+  --leather-warm:     #3E2A12;
+  --bark:             #1C1208;
+
+  /* — Parchemin & Texte — */
+  --parchment:        #EDE0C4;
+  --parchment-warm:   #D9C9A0;
+  --parchment-dim:    #B0A080;
+  --ash:              #8A7D6E;
+  --ash-dark:         #5C5248;
+  --ash-deep:         #3E3832;
+  --ink:              #C8B890;
+
+  /* — Statuts — */
+  --online:           #4CAF50;
+  --online-glow:      rgba(76, 175, 80, 0.3);
+  --offline:          #7A3030;
+  --warning:          #C8882A;
+
+  /* — Layout — */
+  --sidebar-w:        268px;
+  --titlebar-h:       48px;
+  --ticker-h:         34px;
+  --radius-sm:        2px;
+  --radius:           3px;
+  --radius-lg:        5px;
+
+  /* — Motion — */
+  --ease-out:         cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:      cubic-bezier(0.45, 0, 0.15, 1);
+  --ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);
+  --t-fast:           0.15s;
+  --t-mid:            0.25s;
+  --t-slow:           0.45s;
+}
+
+/* ═══════════════════════════════════════════════════════
+   § 3 · UTILS
+   ═══════════════════════════════════════════════════════ */
+
+button  { cursor: pointer; border: none; background: none; font: inherit; color: inherit; }
+a       { text-decoration: none; color: inherit; }
+input, select, textarea { font: inherit; color: inherit; }
+
+::-webkit-scrollbar       { width: 5px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--gold-dark), var(--gold-deep));
+  border-radius: 1px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dark); }
+
+::selection { background: rgba(122,26,26,0.5); color: var(--gold-light); }
+
+
+

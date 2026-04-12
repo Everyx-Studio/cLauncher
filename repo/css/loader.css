@@ -1,0 +1,103 @@
+.loader-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 55%, rgba(70,20,20,0.20) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(201,168,76,0.04) 0%, transparent 60%),
+    linear-gradient(170deg, #060403 0%, #0E0A06 40%, #08060A 100%);
+  transition: opacity 0.8s var(--ease-out), visibility 0.8s;
+}
+
+.loader-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+/* Emblème central */
+.loader-emblem {
+  position: relative;
+  margin-bottom: 52px;
+  animation: loaderEmblemIn 1.2s var(--ease-out) both;
+}
+
+@keyframes loaderEmblemIn {
+  from { opacity: 0; transform: scale(0.7) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Cercle extérieur tournant */
+.loader-ring-outer {
+  position: absolute;
+  inset: -32px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  border-top-color: rgba(201,168,76,0.4);
+  border-right-color: rgba(201,168,76,0.15);
+  animation: ringRotate 8s linear infinite;
+}
+
+/* Cercle intérieur tournant inverse */
+.loader-ring-inner {
+  position: absolute;
+  inset: -16px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  border-bottom-color: rgba(122,26,26,0.5);
+  border-left-color: rgba(122,26,26,0.2);
+  animation: ringRotate 5s linear infinite reverse;
+}
+
+@keyframes ringRotate { to { transform: rotate(360deg); } }
+
+/* 8 marqueurs sur le cercle */
+.loader-ring-marks {
+  position: absolute;
+  inset: -32px;
+  border-radius: 50%;
+  animation: ringRotate 8s linear infinite;
+}
+
+.loader-ring-marks::before,
+.loader-ring-marks::after {
+  content: '';
+  position: absolute;
+  width: 5px; height: 5px;
+  background: var(--gold-dark);
+  border-radius: 50%;
+  top: 50%; left: 50%;
+  transform-origin: 0 0;
+}
+.loader-ring-marks::before { transform: translate(-50%,-50%) rotate(0deg)   translateY(-calc(50% + 32px)); }
+.loader-ring-marks::after  { transform: translate(-50%,-50%) rotate(180deg) translateY(-calc(50% + 32px)); }
+
+/* Bouclier central */
+.loader-shield {
+  width: 88px; height: 100px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 65%, 50% 100%, 0% 65%);
+  background:
+    linear-gradient(160deg, var(--blood-dark) 0%, var(--blood) 50%, rgba(100,20,20,0.9) 100%);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  box-shadow:
+    0 0 30px rgba(122,26,26,0.4),
+    0 0 60px rgba(122,26,26,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+/* Bordure intérieure du bouclier */
+.loader-shield::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 65%, 50% 100%, 0% 65%);
+  border: 1px solid rgba(201,168,76,0.25);
+}
+
+.loader-crest {
+  font-size: 34px;
+  filter: drop-shadow(0 0 8px rgba(201,168,76,0.6));
+  animation: crestPulse 3s ease-in-out infinite;
+  position: relative; z-index: 1;
+}
+@keyframes crestPulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(201,168,76,0.4)); }
+  50%       { filter: drop-shadow(0 0 16px rgba(201,168,76,0.8)); }
+}

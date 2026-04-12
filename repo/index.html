@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Royaume de Valdris — Launcher</title>
+  <link rel="stylesheet" href="./css/style.css" />
+  <link rel="stylesheet" href="./css/rules.css">
+  <link rel="stylesheet" href="./css/loader.css">
+</head>
+<body>
+
+  <!-- Couches atmosphériques -->
+  <div class="atmo-base"></div>
+  <div class="atmo-grid"></div>
+  <div class="atmo-grain"></div>
+  <div class="atmo-haze"></div>
+  <div class="atmo-vignette"></div>
+
+  <!-- ══════════════════════════════════════
+       LOADER
+  ══════════════════════════════════════ -->
+  <div class="loader-screen" id="loader">
+    <div class="loader-particles">
+      <div class="loader-particle"></div><div class="loader-particle"></div>
+      <div class="loader-particle"></div><div class="loader-particle"></div>
+      <div class="loader-particle"></div><div class="loader-particle"></div>
+      <div class="loader-particle"></div>
+    </div>
+    <div class="loader-emblem">
+      <div class="loader-ring-outer"></div>
+      <div class="loader-ring-inner"></div>
+      <div class="loader-ring-marks"></div>
+      <div class="loader-shield"><span class="loader-crest">⚔</span></div>
+    </div>
+    <div class="loader-title">ROYAUME DE VALDRIS</div>
+    <div class="loader-subtitle">Forge · Combat · Survie</div>
+    <div class="loader-progress-wrap">
+      <div class="loader-status" id="loader-status">Invocation des runes…</div>
+      <div class="loader-track">
+        <div class="loader-fill" id="loader-fill" style="width:0%"></div>
+      </div>
+      <div class="loader-ornament">
+        <span class="loader-pct" id="loader-pct">0%</span>
+        <span class="loader-version">v2.1.0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       APPLICATION
+  ══════════════════════════════════════ -->
+  <div class="app-frame" id="app" style="opacity:0;transition:opacity 0.7s;">
+
+    <!-- TITLEBAR -->
+    <header class="titlebar">
+      <div class="titlebar-left">
+        <div class="tb-crest">⚔</div>
+        <span class="tb-name">Royaume de Valdris</span>
+        <div class="tb-sep"></div>
+        <span class="tb-version">v2.1</span>
+      </div>
+      <nav class="titlebar-nav">
+        <button class="nav-tab active" data-page="home">
+          <span class="nav-tab-icon">🏰</span>
+          <span class="nav-tab-label">Accueil</span>
+        </button>
+        <button class="nav-tab" data-page="servers">
+          <span class="nav-tab-icon">⚔</span>
+          <span class="nav-tab-label">Royaumes</span>
+        </button>
+        <button class="nav-tab" data-page="news">
+          <span class="nav-tab-icon">📜</span>
+          <span class="nav-tab-label">Chroniques</span>
+        </button>
+        <button class="nav-tab" data-page="settings">
+          <span class="nav-tab-icon">⚙</span>
+          <span class="nav-tab-label">Forge</span>
+        </button>
+      </nav>
+      <div class="titlebar-wm">
+        <button class="wm-btn wm-min" onclick="window.launcher?.minimize()">─</button>
+        <button class="wm-btn wm-max" onclick="window.launcher?.maximize()">□</button>
+        <button class="wm-btn wm-cls" onclick="window.launcher?.close()">✕</button>
+      </div>
+    </header>
+
+    <!-- CORPS -->
+    <div class="app-body">
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="sidebar-inner">
+          <div class="sidebar-crest">
+            <div class="shield-container">
+              <div class="shield-body"></div>
+              <div class="shield-inner-border"></div>
+              <div class="shield-cross"><span class="shield-icon">⚔</span></div>
+              <div class="shield-glow"></div>
+            </div>
+            <div class="sidebar-kingdom">MEDIEVAL<br>KINGDOM RP</div>
+            <div class="sidebar-motto">Règne. Combats. Survives.</div>
+          </div>
+
+          <div class="orn-sep">
+            <span class="orn-line"></span><span class="orn-gem"></span><span class="orn-line right"></span>
+          </div>
+
+          <div class="sidebar-stats">
+            <div class="sstat highlight">
+              <span class="sstat-num">127</span>
+              <span class="sstat-label">Capacité</span>
+            </div>
+            <div class="sstat highlight">
+              <span class="sstat-num" id="stat-online">—</span>
+              <span class="sstat-label">En ligne</span>
+            </div>
+            <div class="sstat">
+              <span class="sstat-num">15</span>
+              <span class="sstat-label">Guildes</span>
+            </div>
+          </div>
+
+          <div class="orn-sep">
+            <span class="orn-line"></span><span class="orn-gem"></span><span class="orn-line right"></span>
+          </div>
+
+          <div class="server-status-pill online" id="server-pill">
+            <span class="status-pulse"></span>
+            <span class="status-text">Vérification…</span>
+            <span class="status-ping" id="server-ping-display">—</span>
+          </div>
+
+          <div class="orn-sep">
+            <span class="orn-line"></span><span class="orn-gem"></span><span class="orn-line right"></span>
+          </div>
+
+          <nav class="sidebar-nav">
+            <a class="slink" href="#">
+              <span class="slink-icon">🗺</span>
+              <span class="slink-label">Éditeur de Carte</span>
+              <span class="slink-arr">›</span>
+            </a>
+            <a class="slink" href="#">
+              <span class="slink-icon">📖</span>
+              <span class="slink-label">Règles du Royaume</span>
+              <span class="slink-arr">›</span>
+            </a>
+            <a class="slink" href="#">
+              <span class="slink-icon">💬</span>
+              <span class="slink-label">Discord</span>
+              <span class="slink-badge">142</span>
+              <span class="slink-arr">›</span>
+            </a>
+            <a class="slink" href="#">
+              <span class="slink-icon">📜</span>
+              <span class="slink-label">Guide de Jeu</span>
+              <span class="slink-arr">›</span>
+            </a>
+          </nav>
+
+          <div class="sidebar-user">
+            <div class="user-avatar">S</div>
+            <div class="user-info">
+              <span class="user-name">Skilo</span>
+              <span class="user-rank">Seigneur de Guerre</span>
+            </div>
+            <div class="user-online-dot"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CONTENU -->
+      <main class="content-area">
+
+        <!-- PAGE ACCUEIL -->
+        <section class="page active" id="page-home">
+          <div class="hero-canvas">
+            <div class="hero-castle-bg"></div>
+            <div class="hero-blood-light"></div>
+            <div class="hero-ground-haze"></div>
+            <div class="hero-flames">
+              <div class="flame flame-a"></div>
+              <div class="flame flame-b"></div>
+              <div class="flame flame-c"></div>
+              <div class="flame flame-d"></div>
+            </div>
+            <div class="hero-content">
+              <div class="hero-text">
+                <span class="hero-season-tag">— Saison IV · L'Ère des Ténèbres —</span>
+                <h1 class="hero-title">LE ROYAUME<br>VOUS ATTEND</h1>
+                <p class="hero-desc">Forgez votre légende dans les cendres de la guerre</p>
+              </div>
+              <div class="hero-cta">
+                <button class="play-btn" id="play-btn" onclick="launchGame()">
+                  <span class="play-icon">⚔</span>
+                  <span class="play-label">JOUER</span>
+                  <span class="play-sub">FiveM · Medieval RP</span>
+                </button>
+                <button class="console-trigger" onclick="openConsole()">⊞ Console</button>
+              </div>
+            </div>
+          </div>
+          <div class="activity-strip">
+            <span class="activity-label">Activité récente</span>
+            <div class="activity-divider"></div>
+            <div class="activity-items">
+              <div class="act-item">
+                <span class="act-dot green"></span>
+                <span class="act-text"><strong>Aldric le Rouge</strong> vient de rejoindre</span>
+                <span class="act-time">il y a 2min</span>
+              </div>
+              <div class="act-item">
+                <span class="act-dot blood"></span>
+                <span class="act-text"><strong>Guilde des Loups</strong> a capturé Fort Sombre</span>
+                <span class="act-time">il y a 14min</span>
+              </div>
+              <div class="act-item">
+                <span class="act-dot gold"></span>
+                <span class="act-text"><strong>Tournoi des Lames</strong> commence dans 1h</span>
+                <span class="act-time">il y a 30min</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PAGE SERVEURS -->
+        <section class="page" id="page-servers">
+          <div class="page-header">
+            <div class="page-title-wrap">
+              <h2 class="page-title">⚔ Royaumes</h2>
+              <span class="page-subtitle">Rejoignez un serveur et forgez votre légende</span>
+            </div>
+            <div class="page-controls">
+              <div class="search-wrap">
+                <input class="search-input" type="text" placeholder="Rechercher un royaume…" />
+              </div>
+              <select class="filter-select">
+                <option>Tous</option><option>En ligne</option><option>RP</option><option>PVP</option>
+              </select>
+            </div>
+          </div>
+          <div class="servers-body">
+            <div class="scard featured">
+              <div class="scard-banner">
+                <span class="scard-badge official">⚔ Serveur Officiel</span>
+                <div class="scard-status online"><span class="scard-status-dot"></span><span id="scard-main-ping">—</span></div>
+              </div>
+              <div class="scard-body">
+                <div class="scard-info">
+                  <div class="scard-name">🏰 Royaume de Valdris</div>
+                  <div class="scard-desc">Serveur RP médiéval principal — Guildes, politique, sièges de châteaux</div>
+                  <div class="scard-tags">
+                    <span class="stag rp">RP</span>
+                    <span class="stag medieval">Médiéval</span>
+                    <span class="stag pvp">PVP</span>
+                    <span class="stag economy">Économie</span>
+                  </div>
+                </div>
+                <div class="scard-right">
+                  <div class="players-display">
+                    <div class="players-bar-wrap"><div class="players-bar-fill" style="width:44%"></div></div>
+                    <span class="players-count-text">56 / 127</span>
+                  </div>
+                  <button class="scard-join-btn primary" onclick="launchGame()">Rejoindre</button>
+                </div>
+              </div>
+            </div>
+            <div class="scard">
+              <div class="scard-banner">
+                <span class="scard-badge dev">⚙ Développement</span>
+                <div class="scard-status online"><span class="scard-status-dot"></span>&lt;1ms</div>
+              </div>
+              <div class="scard-body">
+                <div class="scard-info">
+                  <div class="scard-name">🔧 Serveur Local</div>
+                  <div class="scard-desc">Environnement de développement — Tests de scripts et ressources</div>
+                  <div class="scard-tags"><span class="stag dev">Dev</span><span class="stag medieval">Médiéval</span></div>
+                </div>
+                <div class="scard-right">
+                  <div class="players-display">
+                    <div class="players-bar-wrap"><div class="players-bar-fill" style="width:1%"></div></div>
+                    <span class="players-count-text">1 / 8</span>
+                  </div>
+                  <button class="scard-join-btn secondary">Se connecter</button>
+                </div>
+              </div>
+            </div>
+            <div class="scard offline">
+              <div class="scard-banner">
+                <span class="scard-badge local">🏹 Communauté</span>
+                <div class="scard-status offline-status"><span class="scard-status-dot"></span>Hors ligne</div>
+              </div>
+              <div class="scard-body">
+                <div class="scard-info">
+                  <div class="scard-name">⚔ Les Terres de Fer <span class="scard-offline-tag">HORS LIGNE</span></div>
+                  <div class="scard-desc">Serveur communautaire axé PVP — Batailles de clans</div>
+                  <div class="scard-tags"><span class="stag pvp">PVP</span><span class="stag medieval">Médiéval</span></div>
+                </div>
+                <div class="scard-right">
+                  <div class="players-display">
+                    <div class="players-bar-wrap"><div class="players-bar-fill" style="width:0%"></div></div>
+                    <span class="players-count-text">0 / 64</span>
+                  </div>
+                  <button class="scard-join-btn disabled" disabled>Indisponible</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PAGE CHRONIQUES -->
+        <section class="page" id="page-news">
+          <div class="page-header">
+            <div class="page-title-wrap">
+              <h2 class="page-title">📜 Chroniques Royales</h2>
+              <span class="page-subtitle">Décrets, événements et mises à jour du Royaume</span>
+            </div>
+          </div>
+          <div class="news-body">
+            <article class="ncard featured type-combat">
+              <div class="ncard-type combat">⚔ Guerre</div>
+              <h3 class="ncard-title">La Guerre des Cinq Royaumes reprend — Valdris attaqué au nord</h3>
+              <p class="ncard-body">Les forces de la coalition des Terres Grises ont franchi les portes du col des Ombres ce matin à l'aube. Les seigneurs de Valdris appellent à la mobilisation générale. Que tout chevalier vaillant prenne les armes.</p>
+              <div class="ncard-footer">
+                <span class="ncard-meta ncard-author">† Chroniqueur Royal</span>
+                <div class="ncard-sep"></div>
+                <span class="ncard-meta ncard-date">Aujourd'hui · 08h42</span>
+              </div>
+            </article>
+            <article class="ncard type-event">
+              <div class="ncard-type event">⚡ Événement</div>
+              <h3 class="ncard-title">Tournoi des Lames — Inscriptions ouvertes jusqu'au 20 Janv.</h3>
+              <p class="ncard-body">Le Grand Tournoi des Lames se tiendra dans l'arène de pierre de Valdris. Le vainqueur recevra le titre de Champion du Roi et 500 pièces d'or.</p>
+              <div class="ncard-footer">
+                <span class="ncard-meta ncard-author">† Héraut du Roi</span>
+                <div class="ncard-sep"></div>
+                <span class="ncard-meta ncard-date">Hier · 18h30</span>
+              </div>
+            </article>
+            <article class="ncard type-patch">
+              <div class="ncard-type patch">⚙ Mise à jour 2.1</div>
+              <h3 class="ncard-title">Sièges de châteaux — Nouveau système implémenté</h3>
+              <p class="ncard-body">Le système de siège de châteaux fait son entrée dans Valdris. Organisez vos armées, déployez des catapultes et prenez le contrôle des forteresses stratégiques.</p>
+              <div class="ncard-footer">
+                <span class="ncard-meta ncard-author">† Équipe dev</span>
+                <div class="ncard-sep"></div>
+                <span class="ncard-meta ncard-date">14 Jan · 12h00</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- PAGE FORGE -->
+        <section class="page" id="page-settings">
+          <div class="page-header">
+            <div class="page-title-wrap">
+              <h2 class="page-title">⚙ Forge du Launcher</h2>
+              <span class="page-subtitle">Configuration de votre installation</span>
+            </div>
+          </div>
+          <div class="settings-body">
+            <div class="set-group">
+              <div class="set-group-hd"><span class="set-group-title">Installation FiveM</span></div>
+              <div class="set-row">
+                <div class="set-label">
+                  <span class="set-label-main">Chemin vers FiveM</span>
+                  <span class="set-label-sub">Chemin absolu vers FiveM.exe</span>
+                </div>
+                <div class="set-control">
+                  <div class="path-display" id="fivem-path-display">Détection en cours…</div>
+                  <button class="set-btn" id="btn-browse-fivem">Parcourir</button>
+                </div>
+              </div>
+            </div>
+            <div class="set-group">
+              <div class="set-group-hd"><span class="set-group-title">Connexion Serveur</span></div>
+              <div class="set-row">
+                <div class="set-label">
+                  <span class="set-label-main">IP du serveur</span>
+                  <span class="set-label-sub">Adresse de connexion par défaut</span>
+                </div>
+                <div class="set-control">
+                  <input id="setting-ip" class="set-input" type="text" value="127.0.0.1" style="width:180px;" />
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-label">
+                  <span class="set-label-main">Port</span>
+                  <span class="set-label-sub">Port FiveM (défaut : 30120)</span>
+                </div>
+                <div class="set-control">
+                  <input id="setting-port" class="set-input" type="number" value="30120" style="width:120px;" />
+                </div>
+              </div>
+            </div>
+            <div class="set-group">
+              <div class="set-group-hd"><span class="set-group-title">Audio & Ambiance</span></div>
+              <div class="set-row">
+                <div class="set-label">
+                  <span class="set-label-main">Musique du launcher</span>
+                  <span class="set-label-sub">Thème musical médiéval en arrière-plan</span>
+                </div>
+                <div class="set-control">
+                  <label class="toggle-label">
+                    <input id="setting-music" type="checkbox" checked />
+                    <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                  </label>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-label">
+                  <span class="set-label-main">Volume ambiance</span>
+                </div>
+                <div class="set-control">
+                  <input id="setting-volume" type="range" class="set-slider" min="0" max="100" value="65"
+                    oninput="this.style.setProperty('--pct',this.value+'%');document.getElementById('setting-volume-val').textContent=this.value+'%'" />
+                  <span id="setting-volume-val" class="slider-val">65%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- TICKER -->
+    <div class="ticker-bar">
+      <span class="ticker-badge">⚔ Décrets</span>
+      <div class="ticker-divider"></div>
+      <div class="ticker-track">
+        <div class="ticker-inner">
+          <span class="ticker-item"><span class="tdot"></span><strong>Mise à jour 2.1</strong> — Sièges de châteaux disponibles</span>
+          <span class="ticker-sep">✦</span>
+          <span class="ticker-item"><span class="tdot"></span><strong>Tournoi Royal</strong> — Inscriptions jusqu'au 20 Janv.</span>
+          <span class="ticker-sep">✦</span>
+          <span class="ticker-item"><span class="tdot"></span><strong>Forge</strong> — 14 nouvelles armures légendaires</span>
+          <span class="ticker-sep">✦</span>
+          <span class="ticker-item"><span class="tdot"></span><strong>Événement Rare</strong> — Dragon aperçu aux portes de l'Est</span>
+          <span class="ticker-sep">✦</span>
+          <span class="ticker-item"><span class="tdot"></span><strong>Guilde des Loups</strong> tient 3 châteaux stratégiques</span>
+          <span class="ticker-sep">✦</span>
+          <span class="ticker-item"><span class="tdot"></span><strong>Mise à jour 2.1</strong> — Sièges de châteaux disponibles</span>
+          <span class="ticker-sep">✦</span>
+          <span class="ticker-item"><span class="tdot"></span><strong>Tournoi Royal</strong> — Inscriptions jusqu'au 20 Janv.</span>
+          <span class="ticker-sep">✦</span>
+          <span class="ticker-item"><span class="tdot"></span><strong>Forge</strong> — 14 nouvelles armures légendaires</span>
+          <span class="ticker-sep">✦</span>
+          <span class="ticker-item"><span class="tdot"></span><strong>Événement Rare</strong> — Dragon aperçu aux portes de l'Est</span>
+          <span class="ticker-sep">✦</span>
+          <span class="ticker-item"><span class="tdot"></span><strong>Guilde des Loups</strong> tient 3 châteaux stratégiques</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <!-- /app -->
+
+  <!-- CONSOLE -->
+  <div class="console-overlay hidden" id="console-overlay">
+    <div class="console-panel">
+      <div class="console-hd">
+        <span class="console-title">Journal du Serveur</span>
+        <button class="console-close-btn" onclick="closeConsole()">✕</button>
+      </div>
+      <div class="console-body" id="console-body">
+        <div class="clog info"><span class="clog-prefix">[SYS]</span> Initialisation du Royaume de Valdris…</div>
+      </div>
+      <div class="console-footer">
+        <div class="console-indicator"><div class="console-dot"></div>Actif</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATIONS -->
+  <div class="notif-stack" id="notif-stack"></div>
+
+  <script src="renderer-premium.js"></script>
+</body>
+</html>
