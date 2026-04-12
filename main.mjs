@@ -1,10 +1,13 @@
 // main.mjs — Processus principal Electron · Royaume de Valdris Launcher
-// Corrections v2.1 :
-//   - window controls IPC (minimize / maximize / close)
-//   - détection auto FiveM.exe (chemins Windows courants)
-//   - lancement réel via URI scheme fivem:// ou spawn direct
-//   - persistance config JSON dans userData
-//   - ping serveur via IPC (évite les contraintes CORS du renderer)
+// v2.2 — Améliorations :
+//   - Verrou instance unique (single-instance lock)
+//   - app.setAppUserModelId pour les notifications Windows
+//   - IPC getServerInfo : récupère /info.json + /players.json du serveur FiveM
+//   - IPC open-external avec liste blanche d'URLs
+//   - IPC get-version
+//   - Sécurité : will-navigate bloqué, setPermissionRequestHandler
+//   - start-local-server protégé par try/catch
+//   - Nettoyage à la fermeture (serverProcess.kill garantit)
 
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import path    from 'path';
@@ -16,19 +19,41 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const isDev      = process.argv.includes('--dev');
 
+// ─── INSTANCE UNIQUE ──────────────────────────────────────────────────────────
+// Empêche l'ouverture de plusieurs fenêtres simultanées.
+
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+  process.exit(0);
+}
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
+// ─── NOTIFICATIONS WINDOWS ────────────────────────────────────────────────────
+// Nécessaire pour que les notifications toast Windows affichent le bon nom.
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.valdris.launcher');
+}
+
 // ─── CONFIG JSON ──────────────────────────────────────────────────────────────
 
 const CONFIG_PATH = path.join(app.getPath('userData'), 'launcher-config.json');
 
 const DEFAULT_CONFIG = {
-  fivemPath:     '',          // chemin absolu vers FiveM.exe (optionnel)
+  fivemPath:     '',
   serverIp:      '127.0.0.1',
   serverPort:    30120,
   musicEnabled:  true,
   musicVolume:   65,
 };
 
-function loadConfig () {
+function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
       return { ...DEFAULT_CONFIG, ...JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')) };
@@ -37,7 +62,7 @@ function loadConfig () {
   return { ...DEFAULT_CONFIG };
 }
 
-function saveConfig (updates) {
+function saveConfig(updates) {
   try {
     const merged = { ...loadConfig(), ...updates };
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2), 'utf8');
@@ -49,22 +74,19 @@ function saveConfig (updates) {
 
 // ─── DÉTECTION AUTO FIVEM ─────────────────────────────────────────────────────
 
-function detectFiveMPath () {
+function detectFiveMPath() {
   const localApp  = process.env.LOCALAPPDATA  || '';
   const progFiles = process.env.ProgramFiles  || 'C:\\Program Files';
   const progX86   = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
   const userProf  = process.env.USERPROFILE   || '';
 
   const candidates = [
-    // Installation par défaut FiveM
     path.join(localApp,  'FiveM', 'FiveM.exe'),
     path.join(localApp,  'FiveM Application Data', 'FiveM.exe'),
-    // Emplacements manuels courants
     path.join('C:\\FiveM', 'FiveM.exe'),
     path.join('D:\\FiveM', 'FiveM.exe'),
     path.join(progFiles,  'FiveM', 'FiveM.exe'),
     path.join(progX86,    'FiveM', 'FiveM.exe'),
-    // Bureau
     path.join(userProf, 'Desktop', 'FiveM.exe'),
     path.join(userProf, 'Documents', 'FiveM', 'FiveM.exe'),
   ];
@@ -76,16 +98,11 @@ function detectFiveMPath () {
 }
 
 // ─── LANCEMENT FIVEM ──────────────────────────────────────────────────────────
-// Mécanismes officiels uniquement :
-//   1. URI scheme  → fivem://connect/IP:PORT  (FiveM détecte et se lance seul)
-//   2. Spawn direct → FiveM.exe +connect IP:PORT  (si chemin connu)
-// Aucun contournement d'authentification Rockstar/CFX.
 
-async function doLaunchFiveM ({ ip, port, fivemPath }) {
+async function doLaunchFiveM({ ip, port, fivemPath }) {
   const connectStr = `${ip}:${port}`;
   const uriConnect = `fivem://connect/${connectStr}`;
 
-  // Stratégie 1 — URI scheme (recommandée, pas besoin du chemin)
   if (!fivemPath) {
     try {
       await shell.openExternal(uriConnect);
@@ -95,9 +112,7 @@ async function doLaunchFiveM ({ ip, port, fivemPath }) {
     }
   }
 
-  // Stratégie 2 — Chemin explicite fourni
   if (!fs.existsSync(fivemPath)) {
-    // Tentative de fallback sur URI même si chemin fourni mais invalide
     try {
       await shell.openExternal(uriConnect);
       return { ok: true, method: 'uri-fallback', warning: 'Chemin FiveM.exe introuvable, fallback URI utilisé.' };
@@ -115,7 +130,6 @@ async function doLaunchFiveM ({ ip, port, fivemPath }) {
     proc.unref();
     return { ok: true, method: 'spawn-exe' };
   } catch (err) {
-    // Dernier fallback sur URI
     try {
       await shell.openExternal(uriConnect);
       return { ok: true, method: 'uri-final-fallback' };
@@ -125,12 +139,86 @@ async function doLaunchFiveM ({ ip, port, fivemPath }) {
   }
 }
 
+// ─── INFO SERVEUR FIVEM ───────────────────────────────────────────────────────
+// Récupère les données publiques du serveur FiveM (/info.json + /players.json)
+// sans contrainte CORS puisque tout passe par le processus principal.
+
+async function fetchServerInfo({ ip, port }) {
+  const base = `http://${ip}:${port}`;
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+
+  try {
+    const start = Date.now();
+
+    const [infoRes, playersRes] = await Promise.allSettled([
+      fetch(`${base}/info.json`,    { signal: ctrl.signal }),
+      fetch(`${base}/players.json`, { signal: ctrl.signal }),
+    ]);
+
+    const ms = Date.now() - start;
+    clearTimeout(timer);
+
+    let info    = null;
+    let players = [];
+
+    if (infoRes.status === 'fulfilled' && infoRes.value.ok) {
+      try { info = await infoRes.value.json(); } catch { /* json invalide */ }
+    }
+
+    if (playersRes.status === 'fulfilled' && playersRes.value.ok) {
+      try { players = await playersRes.value.json(); } catch { /* json invalide */ }
+    }
+
+    if (!info && players.length === 0) {
+      return { online: false, ms: null, players: [], info: null };
+    }
+
+    return {
+      online:      true,
+      ms,
+      playerCount: Array.isArray(players) ? players.length : 0,
+      players:     Array.isArray(players) ? players.slice(0, 20) : [],  // 20 premiers suffisent à l'UI
+      hostname:    info?.vars?.sv_projectName || info?.hostname || 'Royaume de Valdris',
+      maxPlayers:  info?.vars?.sv_maxClients  ?? 127,
+      gametype:    info?.vars?.gametype        || 'Medieval RP',
+      mapname:     info?.vars?.mapname         || 'Valdris',
+      info,
+    };
+  } catch {
+    clearTimeout(timer);
+    return { online: false, ms: null, players: [], info: null };
+  }
+}
+
+// ─── LISTE BLANCHE URLs EXTERNES ─────────────────────────────────────────────
+// Seules ces origines peuvent être ouvertes via openExternal depuis le renderer.
+
+const EXTERNAL_ORIGINS_WHITELIST = [
+  'https://discord.gg',
+  'https://discord.com',
+  'https://cfx.re',
+  'https://fivem.net',
+  'https://github.com',
+  'https://docs.fivem.net',
+];
+
+function isUrlAllowed(url) {
+  try {
+    const { origin, protocol } = new URL(url);
+    if (protocol !== 'https:') return false;
+    return EXTERNAL_ORIGINS_WHITELIST.some(o => origin === o || origin.startsWith(o));
+  } catch {
+    return false;
+  }
+}
+
 // ─── FENÊTRE PRINCIPALE ───────────────────────────────────────────────────────
 
 let mainWindow;
 let serverProcess = null;
 
-function createWindow () {
+function createWindow() {
   mainWindow = new BrowserWindow({
     width:  1400,
     height: 900,
@@ -143,7 +231,7 @@ function createWindow () {
       preload: path.join(__dirname, 'preload.mjs'),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false,                // nécessaire pour les imports ESM dans preload
+      sandbox: false,          // nécessaire pour les imports ESM dans preload
       webSecurity: true,
     },
     show: false,
@@ -156,14 +244,29 @@ function createWindow () {
     if (isDev) mainWindow.webContents.openDevTools({ mode: 'detach' });
   });
 
-  // Empêcher la navigation vers des URL externes dans la fenêtre principale
+  // Bloquer toute navigation sortante (XSS / redirection malveillante)
+  mainWindow.webContents.on('will-navigate', (e, url) => {
+    if (!url.startsWith('file://')) {
+      e.preventDefault();
+    }
+  });
+
+  // Bloquer les popups
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
+  // Refuser les permissions sensibles (micro, caméra, etc.)
+  mainWindow.webContents.session.setPermissionRequestHandler((_, permission, cb) => {
+    const allowed = ['notifications'];
+    cb(allowed.includes(permission));
+  });
 }
 
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
-  serverProcess?.kill();
+  if (serverProcess) {
+    try { serverProcess.kill(); } catch { /* déjà terminé */ }
+  }
   if (process.platform !== 'darwin') app.quit();
 });
 
@@ -178,17 +281,21 @@ ipcMain.handle('win-maximize', () => {
   if (mainWindow?.isMaximized()) mainWindow.unmaximize();
   else mainWindow?.maximize();
 });
-ipcMain.handle('win-close',   () => mainWindow?.close());
+ipcMain.handle('win-close', () => mainWindow?.close());
 
 // ─── IPC : CONFIG ─────────────────────────────────────────────────────────────
 
-ipcMain.handle('get-config', ()          => loadConfig());
-ipcMain.handle('set-config', (_, updates) => saveConfig(updates));
+ipcMain.handle('get-config',  ()           => loadConfig());
+ipcMain.handle('set-config',  (_, updates) => saveConfig(updates));
+
+// ─── IPC : VERSION ────────────────────────────────────────────────────────────
+
+ipcMain.handle('get-version', () => app.getVersion());
 
 // ─── IPC : FIVEM ──────────────────────────────────────────────────────────────
 
-ipcMain.handle('detect-fivem',    ()       => detectFiveMPath());
-ipcMain.handle('launch-fivem',    (_, opts) => doLaunchFiveM(opts));
+ipcMain.handle('detect-fivem',      ()        => detectFiveMPath());
+ipcMain.handle('launch-fivem',      (_, opts) => doLaunchFiveM(opts));
 
 ipcMain.handle('select-fivem-path', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -199,41 +306,74 @@ ipcMain.handle('select-fivem-path', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
-// ─── IPC : PING SERVEUR (via processus principal — pas de CORS) ───────────────
+// ─── IPC : INFO SERVEUR (players + metadata) ──────────────────────────────────
+
+ipcMain.handle('get-server-info', (_, { ip, port }) => fetchServerInfo({ ip, port }));
+
+// ─── IPC : PING SERVEUR ───────────────────────────────────────────────────────
+// Ping léger (HEAD /info.json) — distinct de get-server-info pour rapidité.
 
 ipcMain.handle('ping-server', async (_, { ip, port }) => {
-  // Node n'a pas fetch natif avant v18, et Electron 28 l'a
-  // On tente un simple HEAD sur /info.json de FiveM
   try {
     const url   = `http://${ip}:${port}/info.json`;
     const start = Date.now();
     const ctrl  = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 2500);
-    await fetch(url, { method: 'GET', signal: ctrl.signal });
+    const res   = await fetch(url, { method: 'GET', signal: ctrl.signal });
     clearTimeout(timer);
-    return { online: true, ms: Date.now() - start };
+    return { online: res.ok, ms: Date.now() - start };
   } catch {
     return { online: false, ms: null };
+  }
+});
+
+// ─── IPC : OUVERTURE URL EXTERNE (liste blanche) ─────────────────────────────
+
+ipcMain.handle('open-external', async (_, url) => {
+  if (!isUrlAllowed(url)) {
+    return { ok: false, error: `URL non autorisée : ${url}` };
+  }
+  try {
+    await shell.openExternal(url);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
   }
 });
 
 // ─── IPC : SERVEUR LOCAL (dev) ────────────────────────────────────────────────
 
 ipcMain.handle('start-local-server', async () => {
-  return new Promise((resolve) => {
-    serverProcess = spawn('node', ['../server/index.js'], {
-      cwd: path.join(__dirname, '../server'),
-      stdio: 'pipe',
-    });
+  if (serverProcess) return { ok: false, error: 'Serveur déjà en cours.' };
 
-    serverProcess.stdout.on('data', d => mainWindow?.webContents.send('server-output', d.toString()));
-    serverProcess.stderr.on('data', d => mainWindow?.webContents.send('server-error',  d.toString()));
-    serverProcess.on('close', code => {
-      mainWindow?.webContents.send('server-closed', code);
+  return new Promise((resolve) => {
+    try {
+      serverProcess = spawn('node', ['../server/index.js'], {
+        cwd: path.join(__dirname, '../server'),
+        stdio: 'pipe',
+      });
+
+      serverProcess.stdout.on('data', d => mainWindow?.webContents.send('server-output', d.toString()));
+      serverProcess.stderr.on('data', d => mainWindow?.webContents.send('server-error',  d.toString()));
+      serverProcess.on('close', code => {
+        mainWindow?.webContents.send('server-closed', code);
+        serverProcess = null;
+        resolve({ ok: true, code });
+      });
+      serverProcess.on('error', err => {
+        mainWindow?.webContents.send('server-error', `Erreur spawn : ${err.message}`);
+        serverProcess = null;
+        resolve({ ok: false, error: err.message });
+      });
+    } catch (err) {
       serverProcess = null;
-      resolve(code);
-    });
+      resolve({ ok: false, error: err.message });
+    }
   });
 });
 
-ipcMain.handle('stop-server', () => { serverProcess?.kill(); return true; });
+ipcMain.handle('stop-server', () => {
+  if (!serverProcess) return false;
+  try { serverProcess.kill(); } catch { /* déjà terminé */ }
+  return true;
+});
