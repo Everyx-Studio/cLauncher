@@ -9,9 +9,9 @@ import DiscordRPC from 'discord-rpc';
 // À créer sur https://discord.com/developers/applications
 // Large image key : uploadée dans l'onglet "Rich Presence > Art Assets" de votre app Discord
 const CLIENT_ID     = '1492886749435789352';
-const LARGE_IMAGE   = 'valdris_logo';        // clé de l'asset uploadé
+const LARGE_IMAGE   = '9382e62f-884d-4a26-9d23-f1878882c943';        // clé de l'asset uploadé
 const LARGE_TEXT    = 'Royaume de Valdris';
-const SMALL_IMAGE_ONLINE  = 'status_online';  // asset vert
+const SMALL_IMAGE_ONLINE  = '4dda92e4-6890-49f7-9c9a-2689bd3e91ab';  // asset vert
 const SMALL_IMAGE_OFFLINE = 'status_offline'; // asset rouge
 
 // Délai minimum entre deux setActivity (Discord rate-limit : 1 update / 15s)
