@@ -1,32 +1,68 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   ROYAUME DE VALDRIS  ·  LAUNCHER STYLESHEET  ·  v2.0
+   ROYAUME DE VALDRIS  ·  LAUNCHER STYLESHEET  ·  v2.2
    Direction artistique : Dark Medieval Fantasy — The Witcher / Dark Souls / Elden Ring
+   ─────────────────────────────────────────────────────────────────────────────
+   Changelog v2.2 :
+   - Ajout .loader-screen (conteneur du loader manquant — bug critique)
+   - Ajout .notif.fade-out (utilisé par le renderer pour congédier les notifs)
+   - Ajout .clog-ts (horodatage console — retiré de l'inline HTML)
+   - Suppression des resets dupliqués (button, a, scrollbar, selection)
+     → déjà définis dans rules.css qui est chargé après
+   - Correction .status-text : color hardcodée → var(--online)
+   - Ajout cursor:pointer sur .slink (liens sidebar en rôle button)
+   - Ajout cursor:pointer sur .scard-join-btn (clip-path empêche le défaut)
+   - Note @import Google Fonts : désactivé par la CSP Electron — voir commentaire
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=UnifrakturMaguntia&display=swap');
+/*
+  ── POLICES GOOGLE ────────────────────────────────────────────────────────────
+  L'import est commenté car la CSP définie dans index.html (connect-src 'none')
+  bloque les requêtes vers fonts.googleapis.com en contexte Electron (file://).
+  Pour utiliser ces polices, deux options :
+    A) Pré-bundler les fichiers .woff2 dans /assets/fonts/ et les référencer via
+       @font-face locales → recommandé pour la release.
+    B) Retirer la CSP connect-src 'none' et ajouter
+       style-src 'self' https://fonts.googleapis.com
+       font-src  'self' https://fonts.gstatic.com
+  En attendant, les polices fallback (Georgia, serif) s'appliquent.
+*/
+/* @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=UnifrakturMaguntia&display=swap'); */
 
+/*
+  Fallback @font-face locales (à décommenter quand les fichiers sont en place)
+  @font-face {
+    font-family: 'Cinzel';
+    src: url('./assets/fonts/Cinzel-Regular.woff2') format('woff2');
+    font-weight: 400 900;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'EB Garamond';
+    src: url('./assets/fonts/EBGaramond-Regular.woff2') format('woff2');
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'EB Garamond';
+    src: url('./assets/fonts/EBGaramond-Italic.woff2') format('woff2');
+    font-weight: 400 700;
+    font-style: italic;
+    font-display: swap;
+  }
+*/
 
-
-button  { cursor: pointer; border: none; background: none; font: inherit; color: inherit; }
-a       { text-decoration: none; color: inherit; }
-input, select, textarea { font: inherit; color: inherit; }
-
-::-webkit-scrollbar       { width: 5px; }
-::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--gold-dark), var(--gold-deep));
-  border-radius: 1px;
-}
-::-webkit-scrollbar-thumb:hover { background: var(--gold-dark); }
-
-::selection { background: rgba(122,26,26,0.5); color: var(--gold-light); }
+/*
+  NOTE : les resets (button, a, input, scrollbar, selection) et les design tokens
+  (:root { --gold… }) sont définis dans rules.css (chargé après ce fichier).
+  On ne les redéfinit pas ici pour éviter la duplication.
+*/
 
 
 /* ═══════════════════════════════════════════════════════
    § 3 · COUCHE ATMOSPHÉRIQUE (fond immersif)
    ═══════════════════════════════════════════════════════ */
 
-/* Calque de base – gradient de pierre chaud */
 .atmo-base {
   position: fixed; inset: 0; z-index: 0;
   background:
@@ -42,7 +78,6 @@ input, select, textarea { font: inherit; color: inherit; }
   pointer-events: none;
 }
 
-/* Grille de pierres (texture subtile) */
 .atmo-grid {
   position: fixed; inset: 0; z-index: 1;
   pointer-events: none;
@@ -52,7 +87,6 @@ input, select, textarea { font: inherit; color: inherit; }
     repeating-linear-gradient(90deg,  transparent, transparent 71px,  rgba(201,168,76,1) 71px,  rgba(201,168,76,1) 72px);
 }
 
-/* Bruit de grain (film grain) */
 .atmo-grain {
   position: fixed; inset: 0; z-index: 2;
   pointer-events: none;
@@ -61,14 +95,13 @@ input, select, textarea { font: inherit; color: inherit; }
   animation: grainShift 0.8s steps(2) infinite;
 }
 @keyframes grainShift {
-  0%   { transform: translate(0,   0);   }
+  0%   { transform: translate(0,    0); }
   25%  { transform: translate(-1px, 1px); }
   50%  { transform: translate(1px, -1px); }
   75%  { transform: translate(-1px,-1px); }
   100% { transform: translate(1px,  1px); }
 }
 
-/* Vignetage profond */
 .atmo-vignette {
   position: fixed; inset: 0; z-index: 3;
   pointer-events: none;
@@ -78,7 +111,6 @@ input, select, textarea { font: inherit; color: inherit; }
     radial-gradient(ellipse 100% 20% at 50% 100%, rgba(0,0,0,0.6)  0%, transparent 100%);
 }
 
-/* Halo flottant lent (brume) */
 .atmo-haze {
   position: fixed; inset: 0; z-index: 1;
   pointer-events: none;
@@ -93,13 +125,35 @@ input, select, textarea { font: inherit; color: inherit; }
 
 
 /* ═══════════════════════════════════════════════════════
-   § 4 · LOADER (écran de chargement immersif) 
+   § 4 · LOADER (écran de chargement immersif)
    ═══════════════════════════════════════════════════════ */
 
+/*
+  BUG CORRIGÉ v2.2 :
+  .loader-screen était complètement absent du fichier original.
+  Le conteneur #loader n'avait donc aucun positionnement ni centrage —
+  les éléments internes flottaient en haut à gauche sans mise en page.
+*/
+.loader-screen {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 40%, rgba(30,20,8,0.6) 0%, transparent 70%),
+    var(--obsidian);
+  transition: opacity 0.6s var(--ease-out);
+}
 
-/* Titre royaume */
+.loader-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+  /* On laisse display:none géré par le renderer après la transition */
+}
+
 .loader-title {
-  font-family: 'Cinzel Decorative', serif;
+  font-family: 'Cinzel Decorative', Georgia, serif;
   font-size: 28px; font-weight: 900;
   color: var(--gold-light);
   letter-spacing: 0.18em;
@@ -112,7 +166,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .loader-subtitle {
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   font-style: italic;
   font-size: 13px;
   color: var(--ash);
@@ -128,15 +182,13 @@ input, select, textarea { font: inherit; color: inherit; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Conteneur barre de progression */
 .loader-progress-wrap {
   width: 360px;
   animation: loaderTextIn 1s 0.8s var(--ease-out) both;
 }
 
-/* Texte de statut (dynamique) */
 .loader-status {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 500;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -147,14 +199,11 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: opacity 0.3s;
 }
 
-/* Track de la barre */
 .loader-track {
   width: 100%; height: 6px;
   position: relative;
   background: rgba(0,0,0,0.5);
   border: 1px solid rgba(201,168,76,0.12);
-
-  /* Effet métal gravé */
   box-shadow:
     inset 0 1px 4px rgba(0,0,0,0.8),
     inset 0 0 0 1px rgba(0,0,0,0.4);
@@ -163,8 +212,7 @@ input, select, textarea { font: inherit; color: inherit; }
 /* Encoches décoratives */
 .loader-track::before {
   content: '';
-  position: absolute;
-  inset: 0;
+  position: absolute; inset: 0;
   background-image: repeating-linear-gradient(
     90deg,
     transparent,
@@ -176,7 +224,6 @@ input, select, textarea { font: inherit; color: inherit; }
   pointer-events: none;
 }
 
-/* Barre de remplissage */
 .loader-fill {
   height: 100%;
   width: 0%;
@@ -192,13 +239,12 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: width 0.6s var(--ease-out);
 }
 
-/* Shimmer lumineux sur la barre */
 @keyframes fillShimmer {
   0%   { background-position: 200% center; }
   100% { background-position: -200% center; }
 }
 
-/* Orbe de lumière au bout de la barre */
+/* Orbe lumineux au bout de la barre */
 .loader-fill::after {
   content: '';
   position: absolute;
@@ -212,27 +258,26 @@ input, select, textarea { font: inherit; color: inherit; }
     0 0 16px 4px rgba(201,168,76,0.4);
 }
 
-/* Ornements aux extrémités de la barre */
 .loader-ornament {
   display: flex; align-items: center; justify-content: space-between;
   margin-top: 8px;
 }
 
 .loader-pct {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px;
   color: var(--gold-dark);
   letter-spacing: 0.1em;
 }
 
 .loader-version {
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   font-style: italic;
   font-size: 11px;
   color: var(--ash-deep);
 }
 
-/* Particules flottantes (flammes d'ambiance) */
+/* Particules flottantes */
 .loader-particles {
   position: absolute; inset: 0;
   overflow: hidden; pointer-events: none;
@@ -260,6 +305,70 @@ input, select, textarea { font: inherit; color: inherit; }
   10%  { opacity: 0.7; }
   80%  { opacity: 0.2; }
   100% { transform: translateY(-70vh) scale(0.3) rotate(45deg); opacity: 0; }
+}
+
+/* — Emblème central du loader — */
+.loader-emblem {
+  position: relative;
+  width: 120px; height: 120px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 32px;
+}
+
+.loader-ring-outer {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,76,0.22);
+  animation: loaderRingOuter 12s linear infinite;
+}
+.loader-ring-outer::before {
+  content: '◆';
+  position: absolute;
+  top: -6px; left: 50%; transform: translateX(-50%);
+  font-size: 8px; color: var(--gold-dark);
+}
+@keyframes loaderRingOuter { to { transform: rotate(360deg); } }
+
+.loader-ring-inner {
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,76,0.12);
+  animation: loaderRingInner 8s linear infinite reverse;
+}
+@keyframes loaderRingInner { to { transform: rotate(360deg); } }
+
+.loader-ring-marks {
+  position: absolute; inset: 6px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    rgba(201,168,76,0.06) 0deg,
+    rgba(201,168,76,0.06) 2deg,
+    transparent 2deg,
+    transparent 90deg
+  );
+  animation: loaderRingOuter 20s linear infinite reverse;
+}
+
+.loader-shield {
+  position: relative; z-index: 2;
+  width: 60px; height: 70px;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 10px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 66%, 50% 100%, 0% 66%);
+  background: linear-gradient(150deg, var(--blood-dark) 0%, var(--blood) 50%, rgba(100,22,22,0.95) 100%);
+  border: 1px solid rgba(201,168,76,0.2);
+  box-shadow: 0 4px 20px rgba(122,26,26,0.5);
+}
+
+.loader-crest {
+  font-size: 24px;
+  filter: drop-shadow(0 0 10px rgba(201,168,76,0.8));
+  animation: loaderCrestPulse 3s ease-in-out infinite;
+}
+@keyframes loaderCrestPulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(201,168,76,0.5)); }
+  50%       { filter: drop-shadow(0 0 20px rgba(201,168,76,1)); }
 }
 
 
@@ -291,12 +400,9 @@ input, select, textarea { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--gold-border);
   -webkit-app-region: drag;
   position: relative; z-index: 100;
-
-  /* Double ligne supérieure (métal gravé) */
   box-shadow: 0 1px 0 rgba(255,255,255,0.03);
 }
 
-/* Accent doré supérieur */
 .titlebar::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 2px;
@@ -310,7 +416,6 @@ input, select, textarea { font: inherit; color: inherit; }
     transparent 100%);
 }
 
-/* Ligne de reflet (effet métal brossé) */
 .titlebar::after {
   content: '';
   position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
@@ -334,7 +439,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .tb-name {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 11px; font-weight: 700;
   color: var(--gold);
   letter-spacing: 0.2em;
@@ -348,12 +453,11 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .tb-version {
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   font-size: 11px; font-style: italic;
   color: var(--ash-deep);
 }
 
-/* Navigation centrale */
 .titlebar-nav {
   display: flex; gap: 2px;
   margin: 0 auto;
@@ -397,19 +501,15 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 .nav-tab.active::after { transform: scaleX(1); }
 
-.nav-tab-icon {
-  font-size: 11px;
-  opacity: 0.8;
-}
+.nav-tab-icon { font-size: 11px; opacity: 0.8; }
 
 .nav-tab-label {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-/* Window Management */
 .titlebar-wm {
   display: flex; align-items: center; gap: 8px;
   -webkit-app-region: no-drag;
@@ -433,29 +533,14 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: border-color var(--t-fast);
 }
 
-.wm-min {
-  background: rgba(201,168,76,0.15);
-  color: var(--gold-dark);
-}
-.wm-min:hover {
-  background: rgba(201,168,76,0.28);
-  color: var(--gold);
-}
+.wm-min { background: rgba(201,168,76,0.15); color: var(--gold-dark); }
+.wm-min:hover { background: rgba(201,168,76,0.28); color: var(--gold); }
 .wm-min:hover::before { border-color: rgba(201,168,76,0.25); }
 
-.wm-max {
-  background: rgba(255,255,255,0.05);
-  color: var(--ash-dark);
-}
-.wm-max:hover {
-  background: rgba(255,255,255,0.1);
-  color: var(--ash);
-}
+.wm-max { background: rgba(255,255,255,0.05); color: var(--ash-dark); }
+.wm-max:hover { background: rgba(255,255,255,0.1); color: var(--ash); }
 
-.wm-cls {
-  background: rgba(122,26,26,0.35);
-  color: var(--blood-light);
-}
+.wm-cls { background: rgba(122,26,26,0.35); color: var(--blood-light); }
 .wm-cls:hover {
   background: var(--blood-vivid);
   color: #fff;
@@ -479,7 +564,6 @@ input, select, textarea { font: inherit; color: inherit; }
   position: relative; overflow: hidden;
 }
 
-/* Accent vertical gauche (métal brossé) */
 .sidebar::before {
   content: '';
   position: absolute; top: 0; left: 0; bottom: 0; width: 2px;
@@ -493,7 +577,6 @@ input, select, textarea { font: inherit; color: inherit; }
   pointer-events: none;
 }
 
-/* Lueur ambiante latérale droite */
 .sidebar::after {
   content: '';
   position: absolute; top: 0; right: 0; bottom: 0; width: 60px;
@@ -509,11 +592,9 @@ input, select, textarea { font: inherit; color: inherit; }
   gap: 0;
 }
 
-/* — Blason — */
 .sidebar-crest {
   display: flex; flex-direction: column; align-items: center;
   padding-bottom: 18px;
-  margin-bottom: 0;
 }
 
 .shield-container {
@@ -535,18 +616,14 @@ input, select, textarea { font: inherit; color: inherit; }
     inset 0 1px 0 rgba(255,255,255,0.05);
 }
 
-/* Bordure intérieure forgée */
 .shield-inner-border {
-  position: absolute;
-  inset: 7px;
+  position: absolute; inset: 7px;
   clip-path: polygon(0% 0%, 100% 0%, 100% 66%, 50% 100%, 0% 66%);
   border: 1px solid rgba(201,168,76,0.22);
 }
 
-/* Croix centrale (décoration) */
 .shield-cross {
-  position: absolute;
-  inset: 0;
+  position: absolute; inset: 0;
   display: flex; align-items: flex-start; justify-content: center;
   padding-top: 16px;
   z-index: 1;
@@ -562,7 +639,6 @@ input, select, textarea { font: inherit; color: inherit; }
   50%       { filter: drop-shadow(0 0 18px rgba(201,168,76,0.9)); }
 }
 
-/* Halo du bouclier */
 .shield-glow {
   position: absolute; inset: -12px;
   clip-path: polygon(12px 12px, calc(100% - 12px) 12px, calc(100% - 12px) 75%, 50% calc(100% - 4px), 12px 75%);
@@ -574,7 +650,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .sidebar-kingdom {
-  font-family: 'Cinzel Decorative', serif;
+  font-family: 'Cinzel Decorative', Georgia, serif;
   font-size: 13px; font-weight: 700;
   color: var(--gold);
   text-align: center;
@@ -584,7 +660,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .sidebar-motto {
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   font-style: italic;
   font-size: 11px;
   color: var(--ash-dark);
@@ -593,7 +669,6 @@ input, select, textarea { font: inherit; color: inherit; }
   letter-spacing: 0.04em;
 }
 
-/* — Séparateur ornemental — */
 .orn-sep {
   display: flex; align-items: center; gap: 8px;
   margin: 16px 0;
@@ -616,11 +691,9 @@ input, select, textarea { font: inherit; color: inherit; }
   box-shadow: 0 0 4px rgba(201,168,76,0.3);
 }
 
-/* — Stats en ligne — */
 .sidebar-stats {
   display: grid; grid-template-columns: 1fr 1fr 1fr;
   gap: 6px;
-  margin-bottom: 0;
   flex-shrink: 0;
 }
 
@@ -633,15 +706,11 @@ input, select, textarea { font: inherit; color: inherit; }
   overflow: hidden;
   transition: border-color var(--t-mid);
 }
-
 .sstat:hover { border-color: rgba(201,168,76,0.35); }
-
 .sstat.highlight {
   background: rgba(201,168,76,0.06);
   border-color: rgba(201,168,76,0.28);
 }
-
-/* Coin doré en haut à gauche */
 .sstat::before {
   content: '';
   position: absolute; top: 0; left: 0;
@@ -651,20 +720,20 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .sstat-num {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 20px; font-weight: 700;
   color: var(--gold-light);
   line-height: 1;
   display: block;
+  transition: color var(--t-mid);
 }
-
 .sstat.highlight .sstat-num {
   color: var(--gold-bright);
   text-shadow: 0 0 12px rgba(201,168,76,0.4);
 }
 
 .sstat-label {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 7px; font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -677,7 +746,6 @@ input, select, textarea { font: inherit; color: inherit; }
 .server-status-pill {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px;
-  margin-bottom: 0;
   flex-shrink: 0;
 }
 
@@ -685,7 +753,6 @@ input, select, textarea { font: inherit; color: inherit; }
   background: rgba(76,175,80,0.07);
   border: 1px solid rgba(76,175,80,0.20);
 }
-
 .server-status-pill.offline {
   background: rgba(122,26,26,0.1);
   border: 1px solid rgba(122,26,26,0.25);
@@ -707,23 +774,35 @@ input, select, textarea { font: inherit; color: inherit; }
   60%       { box-shadow: 0 0 0 5px rgba(76,175,80,0); }
 }
 
+/*
+  BUG CORRIGÉ v2.2 :
+  .status-text utilisait color: #6FCF70 en dur (valeur online seulement).
+  En état offline le texte restait vert. On utilise maintenant var(--online) /
+  une surcharge explicite pour l'état offline.
+*/
 .status-text {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #6FCF70;
+  color: var(--online);
 }
 .server-status-pill.offline .status-text { color: var(--blood-light); }
 
 .status-ping {
   margin-left: auto;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px;
   color: var(--ash-dark);
+  font-variant-numeric: tabular-nums;
 }
 
-/* — Liens sidebar — */
+/* — Liens sidebar —
+  BUG CORRIGÉ v2.2 : cursor:pointer absent sur .slink.
+  Les <a role="button"> n'héritent pas du cursor:pointer du reset button
+  car ce sont des balises <a>, pas des <button>. Le reset a { } dans rules.css
+  ne force pas le curseur. Résultat : curseur texte au hover.
+*/
 .sidebar-nav {
   display: flex; flex-direction: column; gap: 2px;
   flex-shrink: 0;
@@ -736,9 +815,9 @@ input, select, textarea { font: inherit; color: inherit; }
   color: var(--parchment-dim);
   transition: color var(--t-mid) var(--ease-out);
   overflow: hidden;
+  cursor: pointer; /* FIX v2.2 */
 }
 
-/* Fond hover */
 .slink::before {
   content: '';
   position: absolute; inset: 0;
@@ -747,7 +826,6 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: all var(--t-mid) var(--ease-out);
 }
 
-/* Barre active gauche */
 .slink::after {
   content: '';
   position: absolute; left: 0; top: 20%; bottom: 20%; width: 2px;
@@ -777,7 +855,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .slink-label {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -786,7 +864,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .slink-badge {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 700;
   padding: 2px 7px;
   background: rgba(122,26,26,0.3);
@@ -818,7 +896,7 @@ input, select, textarea { font: inherit; color: inherit; }
   background: linear-gradient(135deg, var(--blood-dark), var(--blood));
   border: 1px solid rgba(201,168,76,0.3);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 14px; font-weight: 700;
   color: var(--gold);
   flex-shrink: 0;
@@ -828,7 +906,6 @@ input, select, textarea { font: inherit; color: inherit; }
   position: relative;
 }
 
-/* Halo avatar */
 .user-avatar::after {
   content: '';
   position: absolute; inset: -3px;
@@ -839,7 +916,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .user-info { flex: 1; overflow: hidden; }
 
 .user-name {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 10px; font-weight: 700;
   color: var(--parchment-warm);
   letter-spacing: 0.06em;
@@ -887,7 +964,6 @@ input, select, textarea { font: inherit; color: inherit; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* En-tête de page */
 .page-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 26px 36px 18px;
@@ -896,7 +972,6 @@ input, select, textarea { font: inherit; color: inherit; }
   position: relative;
 }
 
-/* Ligne de soulignement décorative */
 .page-header::after {
   content: '';
   position: absolute; bottom: -1px; left: 36px; right: 36px; height: 1px;
@@ -904,7 +979,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .page-title {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 17px; font-weight: 700;
   color: var(--gold-light);
   letter-spacing: 0.08em;
@@ -921,24 +996,19 @@ input, select, textarea { font: inherit; color: inherit; }
   display: flex; gap: 10px; align-items: center;
 }
 
-/* Inputs de recherche */
 .search-input {
   padding: 7px 14px 7px 36px;
   background: rgba(0,0,0,0.35);
   border: 1px solid var(--gold-border);
   color: var(--parchment);
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   font-size: 13px;
   outline: none;
   width: 220px;
   transition: border-color var(--t-mid), box-shadow var(--t-mid);
-  position: relative;
 }
 
-.search-wrap {
-  position: relative;
-}
-
+.search-wrap { position: relative; }
 .search-wrap::before {
   content: '⚔';
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
@@ -949,7 +1019,6 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .search-input::placeholder { color: var(--ash-dark); }
-
 .search-input:focus {
   border-color: var(--gold-border-hot);
   box-shadow:
@@ -957,13 +1026,12 @@ input, select, textarea { font: inherit; color: inherit; }
     inset 0 1px 4px rgba(0,0,0,0.4);
 }
 
-/* Select médiéval */
 .filter-select {
-  padding: 7px 14px;
+  padding: 7px 28px 7px 14px;
   background: rgba(0,0,0,0.35);
   border: 1px solid var(--gold-border);
   color: var(--parchment-warm);
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -971,7 +1039,6 @@ input, select, textarea { font: inherit; color: inherit; }
   cursor: pointer;
   transition: border-color var(--t-mid);
   appearance: none;
-  padding-right: 28px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237A5A10' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
@@ -994,7 +1061,6 @@ input, select, textarea { font: inherit; color: inherit; }
     #080604 100%);
 }
 
-/* Château silhouette (arrière-plan) */
 .hero-castle-bg {
   position: absolute;
   right: -2%; bottom: 0;
@@ -1003,7 +1069,6 @@ input, select, textarea { font: inherit; color: inherit; }
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400'%3E%3Cg fill='%23C9A84C'%3E%3Crect x='220' y='110' width='160' height='290'/%3E%3Crect x='200' y='88' width='46' height='60'/%3E%3Crect x='354' y='88' width='46' height='60'/%3E%3Crect x='198' y='70' width='15' height='24'/%3E%3Crect x='220' y='70' width='15' height='24'/%3E%3Crect x='352' y='70' width='15' height='24'/%3E%3Crect x='374' y='70' width='15' height='24'/%3E%3Crect x='0' y='170' width='100' height='230'/%3E%3Crect x='100' y='195' width='120' height='205'/%3E%3Crect x='380' y='195' width='120' height='205'/%3E%3Crect x='500' y='170' width='100' height='230'/%3E%3Crect x='10' y='148' width='20' height='28'/%3E%3Crect x='38' y='148' width='20' height='28'/%3E%3Crect x='66' y='148' width='20' height='28'/%3E%3Crect x='512' y='148' width='20' height='28'/%3E%3Crect x='540' y='148' width='20' height='28'/%3E%3Crect x='568' y='148' width='20' height='28'/%3E%3Crect x='270' y='76' width='12' height='38'/%3E%3Crect x='294' y='60' width='12' height='52'/%3E%3Crect x='318' y='76' width='12' height='38'/%3E%3Crect x='220' y='240' width='20' height='30'/%3E%3Crect x='280' y='240' width='40' height='50'/%3E%3Crect x='360' y='240' width='20' height='30'/%3E%3C/g%3E%3C/svg%3E") right bottom / contain no-repeat;
 }
 
-/* Dégradé de sol + brume */
 .hero-ground-haze {
   position: absolute; bottom: 0; left: 0; right: 0; height: 160px;
   background: linear-gradient(0deg,
@@ -1013,7 +1078,6 @@ input, select, textarea { font: inherit; color: inherit; }
   pointer-events: none;
 }
 
-/* Lueur rouge ambiante */
 .hero-blood-light {
   position: absolute;
   right: 12%; bottom: 15%;
@@ -1028,7 +1092,6 @@ input, select, textarea { font: inherit; color: inherit; }
   50%       { transform: scale(1.15); opacity: 1; }
 }
 
-/* Flammes décoratives */
 .hero-flames {
   position: absolute;
   right: 88px; bottom: 140px;
@@ -1050,7 +1113,6 @@ input, select, textarea { font: inherit; color: inherit; }
   100% { transform: scaleX(0.65) scaleY(0.78) rotate(3deg);  opacity: 0.35; }
 }
 
-/* Contenu Hero */
 .hero-content {
   position: absolute; bottom: 0; left: 0; right: 0;
   padding: 0 44px 32px;
@@ -1061,7 +1123,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .hero-text { flex: 1; }
 
 .hero-season-tag {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 700;
   letter-spacing: 0.3em;
   text-transform: uppercase;
@@ -1071,7 +1133,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .hero-title {
-  font-family: 'Cinzel Decorative', serif;
+  font-family: 'Cinzel Decorative', Georgia, serif;
   font-size: 38px; font-weight: 900;
   color: var(--parchment);
   line-height: 1.12;
@@ -1082,26 +1144,24 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .hero-desc {
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   font-size: 15px; font-style: italic;
   color: var(--ash);
   line-height: 1.6;
   max-width: 440px;
 }
 
-/* — Bouton JOUER — */
 .hero-cta {
   display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
   flex-shrink: 0;
 }
 
+/* — Bouton JOUER — */
 .play-btn {
   position: relative;
   display: flex; flex-direction: column; align-items: center;
   padding: 20px 52px 16px;
   overflow: hidden;
-
-  /* Forme en parallélogramme léger */
   clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
   background: linear-gradient(160deg,
     var(--blood-dark)  0%,
@@ -1110,13 +1170,11 @@ input, select, textarea { font: inherit; color: inherit; }
   border: 1px solid rgba(201,168,76,0.35);
   cursor: pointer;
   transition: transform var(--t-mid) var(--ease-spring), box-shadow var(--t-mid);
-
   box-shadow:
     0 0  24px rgba(122,26,26,0.45),
     0 4px 40px rgba(0,0,0,0.7),
     inset 0 1px 0 rgba(255,255,255,0.06),
     inset 0 -1px 0 rgba(0,0,0,0.3);
-
   animation: playGlow 4s ease-in-out infinite;
 }
 
@@ -1125,7 +1183,6 @@ input, select, textarea { font: inherit; color: inherit; }
   50%       { box-shadow: 0 0 48px rgba(122,26,26,0.7), 0 4px 40px rgba(0,0,0,0.7); }
 }
 
-/* Reflet interne (impression métallique) */
 .play-btn::before {
   content: '';
   position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
@@ -1134,7 +1191,6 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 .play-btn:hover::before { left: 130%; }
 
-/* Traits décoratifs diagonaux */
 .play-btn::after {
   content: '';
   position: absolute; inset: 0;
@@ -1150,7 +1206,6 @@ input, select, textarea { font: inherit; color: inherit; }
     0 0 60px rgba(122,26,26,0.75),
     0 8px 50px rgba(0,0,0,0.6);
 }
-
 .play-btn:active { transform: translateY(-1px) scale(0.99); }
 
 .play-btn.loading {
@@ -1167,7 +1222,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .play-label {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 17px; font-weight: 900;
   color: var(--gold);
   letter-spacing: 0.28em;
@@ -1178,7 +1233,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .play-btn:hover .play-label { color: var(--gold-bright); }
 
 .play-sub {
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   font-size: 10px; font-style: italic;
   color: rgba(201,168,76,0.38);
   margin-top: 4px;
@@ -1186,13 +1241,12 @@ input, select, textarea { font: inherit; color: inherit; }
   position: relative; z-index: 1;
 }
 
-/* Bouton console */
 .console-trigger {
   padding: 7px 18px;
   background: rgba(0,0,0,0.45);
   border: 1px solid var(--gold-border);
   color: var(--ash-dark);
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1205,7 +1259,6 @@ input, select, textarea { font: inherit; color: inherit; }
   color: var(--gold-dark);
 }
 
-/* — Bandeau d'activité — */
 .activity-strip {
   flex-shrink: 0;
   padding: 12px 44px;
@@ -1216,7 +1269,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .activity-label {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -1244,9 +1297,9 @@ input, select, textarea { font: inherit; color: inherit; }
 .act-dot {
   width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
 }
-.act-dot.green  { background: var(--online); box-shadow: 0 0 4px var(--online-glow); }
-.act-dot.gold   { background: var(--gold); box-shadow: 0 0 4px rgba(201,168,76,0.4); }
-.act-dot.blood  { background: var(--blood-light); box-shadow: 0 0 4px rgba(155,37,37,0.4); }
+.act-dot.green  { background: var(--online);       box-shadow: 0 0 4px var(--online-glow); }
+.act-dot.gold   { background: var(--gold);          box-shadow: 0 0 4px rgba(201,168,76,0.4); }
+.act-dot.blood  { background: var(--blood-light);   box-shadow: 0 0 4px rgba(155,37,37,0.4); }
 
 .act-text {
   font-size: 12px; font-style: italic;
@@ -1271,17 +1324,14 @@ input, select, textarea { font: inherit; color: inherit; }
   display: flex; flex-direction: column; gap: 12px;
 }
 
-/* — Carte serveur — */
 .scard {
   border: 1px solid var(--gold-border);
-  background:
-    linear-gradient(160deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.25) 100%);
+  background: linear-gradient(160deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.25) 100%);
   overflow: hidden;
   position: relative;
   transition: border-color var(--t-mid), background var(--t-mid), box-shadow var(--t-mid);
 }
 
-/* Coins forgés */
 .scard::before,
 .scard::after {
   content: '';
@@ -1295,8 +1345,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .scard:hover {
   border-color: rgba(201,168,76,0.35);
-  background:
-    linear-gradient(160deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.35) 100%);
+  background: linear-gradient(160deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.35) 100%);
   box-shadow:
     0 4px 30px rgba(0,0,0,0.5),
     inset 0 0 40px rgba(201,168,76,0.02);
@@ -1310,7 +1359,6 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .scard.offline { opacity: 0.52; }
 
-/* Bannière supérieure */
 .scard-banner {
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 18px;
@@ -1319,7 +1367,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .scard-badge {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1330,11 +1378,12 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .scard-status {
   display: flex; align-items: center; gap: 5px;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 600;
   letter-spacing: 0.1em;
   padding: 2px 8px;
   border-radius: 1px;
+  font-variant-numeric: tabular-nums;
 }
 .scard-status.online {
   color: var(--online);
@@ -1348,7 +1397,6 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 .scard-status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
-/* Corps de la carte */
 .scard-body {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px;
@@ -1358,7 +1406,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .scard-info { flex: 1; min-width: 0; }
 
 .scard-name {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 15px; font-weight: 700;
   color: var(--parchment-warm);
   margin-bottom: 5px;
@@ -1383,25 +1431,23 @@ input, select, textarea { font: inherit; color: inherit; }
 .scard-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .stag {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 7px; font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 2px 9px;
 }
-.stag.rp       { color: #6FCF70; background: rgba(76,175,80,0.1);  border: 1px solid rgba(76,175,80,0.22); }
-.stag.medieval { color: var(--gold); background: var(--gold-faint); border: 1px solid var(--gold-border); }
-.stag.pvp      { color: #E87070; background: rgba(200,80,80,0.1); border: 1px solid rgba(200,80,80,0.22); }
-.stag.dev      { color: #7ABFE8; background: rgba(91,155,213,0.1); border: 1px solid rgba(91,155,213,0.22); }
-.stag.economy  { color: #C8A050; background: rgba(200,160,80,0.1); border: 1px solid rgba(200,160,80,0.22); }
+.stag.rp       { color: #6FCF70; background: rgba(76,175,80,0.1);   border: 1px solid rgba(76,175,80,0.22); }
+.stag.medieval { color: var(--gold); background: var(--gold-faint);  border: 1px solid var(--gold-border); }
+.stag.pvp      { color: #E87070; background: rgba(200,80,80,0.1);   border: 1px solid rgba(200,80,80,0.22); }
+.stag.dev      { color: #7ABFE8; background: rgba(91,155,213,0.1);  border: 1px solid rgba(91,155,213,0.22); }
+.stag.economy  { color: #C8A050; background: rgba(200,160,80,0.1);  border: 1px solid rgba(200,160,80,0.22); }
 
-/* Partie droite de la carte */
 .scard-right {
   display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
   flex-shrink: 0; min-width: 130px;
 }
 
-/* Barre joueurs stylisée */
 .players-display { width: 100%; }
 
 .players-bar-wrap {
@@ -1424,7 +1470,6 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: width 0.8s var(--ease-out);
 }
 
-/* Shimmer sur la barre */
 .players-bar-fill::after {
   content: '';
   position: absolute; inset: 0;
@@ -1438,7 +1483,6 @@ input, select, textarea { font: inherit; color: inherit; }
   100% { background-position: 190px 0; }
 }
 
-/* Encoches sur la barre */
 .players-bar-wrap::before {
   content: '';
   position: absolute; inset: 0; z-index: 2;
@@ -1450,22 +1494,29 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .players-count-text {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 600;
   color: var(--ash-dark);
   text-align: right;
   display: block;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--t-mid);
 }
 
-/* Bouton rejoindre */
+/*
+  BUG CORRIGÉ v2.2 :
+  cursor:pointer absent sur .scard-join-btn — clip-path supprime le curseur natif
+  des buttons sur certaines versions de Chromium (Electron). Ajouté explicitement.
+*/
 .scard-join-btn {
   padding: 9px 24px;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   clip-path: polygon(7px 0%, 100% 0%, calc(100% - 7px) 100%, 0% 100%);
   transition: all var(--t-mid) var(--ease-out);
+  cursor: pointer; /* FIX v2.2 */
 }
 
 .scard-join-btn.primary {
@@ -1519,12 +1570,10 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: border-color var(--t-mid);
 }
 
-/* Barre latérale colorée */
 .ncard::before {
   content: '';
   position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
 }
-
 .ncard.type-lore::before    { background: linear-gradient(180deg, var(--gold-dark), var(--gold-deep)); }
 .ncard.type-event::before   { background: linear-gradient(180deg, var(--online), rgba(76,175,80,0.4)); }
 .ncard.type-patch::before   { background: linear-gradient(180deg, #5B9BD5, rgba(91,155,213,0.4)); }
@@ -1539,7 +1588,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .ncard-type {
   display: inline-flex; align-items: center; gap: 5px;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1553,7 +1602,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .ncard-type.combat { color: #E87070; background: rgba(200,80,80,0.08);  border: 1px solid rgba(200,80,80,0.22); }
 
 .ncard-title {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 15px; font-weight: 700;
   color: var(--parchment-warm);
   margin-bottom: 8px;
@@ -1567,13 +1616,11 @@ input, select, textarea { font: inherit; color: inherit; }
   margin-bottom: 14px;
 }
 
-.ncard-footer {
-  display: flex; align-items: center; gap: 16px;
-}
+.ncard-footer { display: flex; align-items: center; gap: 16px; }
 .ncard-sep { flex: 1; height: 1px; background: rgba(201,168,76,0.08); }
 
 .ncard-meta {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1583,7 +1630,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 
 /* ═══════════════════════════════════════════════════════
-   § 12 · PAGE PROFIL
+   § 12 · PAGE PROFIL (réservé — non implémenté dans la v2.2)
    ═══════════════════════════════════════════════════════ */
 .profile-body {
   flex: 1;
@@ -1596,7 +1643,6 @@ input, select, textarea { font: inherit; color: inherit; }
   align-content: start;
 }
 
-/* Carte identité */
 .profile-identity {
   grid-row: 1 / 3;
   border: 1px solid var(--gold-border);
@@ -1606,7 +1652,6 @@ input, select, textarea { font: inherit; color: inherit; }
   position: relative; overflow: hidden;
 }
 
-/* Coins décorés */
 .profile-identity::before,
 .profile-identity::after {
   content: '';
@@ -1618,17 +1663,14 @@ input, select, textarea { font: inherit; color: inherit; }
 .profile-identity::before { top: 0; left: 0; border-width: 2px 0 0 2px; }
 .profile-identity::after  { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
 
-/* Grand avatar */
-.profile-avatar-wrap {
-  position: relative;
-}
+.profile-avatar-wrap { position: relative; }
 
 .profile-avatar {
   width: 80px; height: 80px; border-radius: 50%;
   background: linear-gradient(135deg, var(--blood-dark) 0%, var(--blood) 60%, var(--blood-light) 100%);
   border: 2px solid rgba(201,168,76,0.3);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 28px; font-weight: 900;
   color: var(--gold);
   box-shadow:
@@ -1652,7 +1694,7 @@ input, select, textarea { font: inherit; color: inherit; }
 @keyframes avatarRing { to { transform: rotate(360deg); } }
 
 .profile-name {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 16px; font-weight: 700;
   color: var(--parchment);
   text-align: center;
@@ -1663,14 +1705,13 @@ input, select, textarea { font: inherit; color: inherit; }
   padding: 4px 14px;
   background: rgba(122,26,26,0.2);
   border: 1px solid rgba(122,26,26,0.35);
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--blood-light);
 }
 
-/* Stats profil */
 .profile-stats-grid {
   width: 100%;
   display: grid; grid-template-columns: 1fr 1fr;
@@ -1685,24 +1726,21 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .pstat-val {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 18px; font-weight: 700;
   color: var(--gold-light);
   display: block;
 }
 
 .pstat-lbl {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 7px; letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ash-dark);
   display: block; margin-top: 2px;
 }
 
-/* Inventaire & Guildes */
-.profile-panels {
-  display: flex; flex-direction: column; gap: 16px;
-}
+.profile-panels { display: flex; flex-direction: column; gap: 16px; }
 
 .profile-panel {
   border: 1px solid var(--gold-border);
@@ -1711,7 +1749,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .panel-title {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -1723,7 +1761,6 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .panel-body { padding: 14px 16px; }
 
-/* Grille inventaire */
 .inventory-grid {
   display: grid; grid-template-columns: repeat(6, 1fr);
   gap: 6px;
@@ -1739,13 +1776,12 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: all var(--t-fast);
   position: relative;
 }
-
 .inv-slot.filled { border-color: rgba(201,168,76,0.2); }
 .inv-slot:hover  { background: rgba(201,168,76,0.06); border-color: var(--gold-border-hot); }
 
 .inv-slot-qty {
   position: absolute; bottom: 2px; right: 3px;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 7px; font-weight: 700;
   color: var(--gold-dark);
 }
@@ -1762,14 +1798,11 @@ input, select, textarea { font: inherit; color: inherit; }
   max-width: 700px;
 }
 
-/* Groupe de paramètres */
 .set-group {
   border: 1px solid var(--gold-border);
   overflow: hidden;
   position: relative;
 }
-
-/* Accent coin */
 .set-group::before {
   content: '';
   position: absolute; top: 0; left: 0;
@@ -1785,7 +1818,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .set-group-title {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -1804,7 +1837,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .set-label { flex: 1; }
 
 .set-label-main {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 11px; font-weight: 600;
   color: var(--parchment-warm);
   letter-spacing: 0.05em;
@@ -1817,7 +1850,6 @@ input, select, textarea { font: inherit; color: inherit; }
   display: block;
 }
 
-/* Contrôles */
 .set-control {
   display: flex; align-items: center; gap: 10px; flex-shrink: 0;
 }
@@ -1827,7 +1859,7 @@ input, select, textarea { font: inherit; color: inherit; }
   background: rgba(0,0,0,0.45);
   border: 1px solid var(--gold-border);
   color: var(--parchment);
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   font-size: 13px;
   width: 260px; outline: none;
   transition: border-color var(--t-mid), box-shadow var(--t-mid);
@@ -1842,7 +1874,7 @@ input, select, textarea { font: inherit; color: inherit; }
   padding: 8px 14px;
   background: rgba(0,0,0,0.45);
   border: 1px solid var(--gold-border);
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   font-size: 12px;
   color: var(--ash);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1854,7 +1886,7 @@ input, select, textarea { font: inherit; color: inherit; }
   background: rgba(201,168,76,0.08);
   border: 1px solid var(--gold-border);
   color: var(--gold-dark);
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1867,7 +1899,6 @@ input, select, textarea { font: inherit; color: inherit; }
   color: var(--gold);
 }
 
-/* Toggle switch */
 .toggle-label { display: flex; align-items: center; cursor: pointer; }
 .toggle-label input { display: none; }
 
@@ -1878,7 +1909,6 @@ input, select, textarea { font: inherit; color: inherit; }
   position: relative;
   transition: all 0.28s var(--ease-in-out);
 }
-
 .toggle-label input:checked ~ .toggle-track {
   background: rgba(122,26,26,0.55);
   border-color: rgba(201,168,76,0.3);
@@ -1891,14 +1921,12 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: all 0.28s var(--ease-spring);
   box-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
-
 .toggle-label input:checked ~ .toggle-track .toggle-thumb {
   transform: translateX(22px);
   background: var(--gold);
   box-shadow: 0 0 8px rgba(201,168,76,0.5);
 }
 
-/* Slider de volume */
 .set-slider {
   -webkit-appearance: none;
   width: 180px; height: 4px;
@@ -1924,11 +1952,12 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .slider-val {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 10px; font-weight: 600;
   color: var(--gold-dark);
   min-width: 32px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 
@@ -1948,8 +1977,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .console-panel {
   width: 600px; height: 400px;
-  background:
-    linear-gradient(170deg, rgba(10,8,5,0.98) 0%, rgba(8,6,4,0.99) 100%);
+  background: linear-gradient(170deg, rgba(10,8,5,0.98) 0%, rgba(8,6,4,0.99) 100%);
   border: 1px solid rgba(201,168,76,0.28);
   display: flex; flex-direction: column;
   position: relative; overflow: hidden;
@@ -1965,14 +1993,12 @@ input, select, textarea { font: inherit; color: inherit; }
   to   { transform: scale(1) translateY(0); opacity: 1; }
 }
 
-/* Accent supérieur */
 .console-panel::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 2px;
   background: linear-gradient(90deg, transparent, var(--gold-dark), var(--gold), var(--gold-dark), transparent);
 }
 
-/* Coins */
 .console-panel::after {
   content: '';
   position: absolute; bottom: 0; right: 0;
@@ -1989,14 +2015,13 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .console-title {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 10px; font-weight: 700;
   letter-spacing: 0.2em;
   color: var(--gold-dark);
   text-transform: uppercase;
   display: flex; align-items: center; gap: 8px;
 }
-
 .console-title::before {
   content: '▶';
   color: var(--blood-light);
@@ -2017,12 +2042,31 @@ input, select, textarea { font: inherit; color: inherit; }
   font-size: 12px; line-height: 1.7;
 }
 
+/* — Lignes de log — */
 .clog { color: var(--ash); }
-.clog.ok      { color: #6FCF70; }
-.clog.warn    { color: var(--warning); }
-.clog.err     { color: #E87070; }
-.clog.info    { color: #7ABFE8; }
-.clog .clog-prefix { color: var(--gold-dark); margin-right: 6px; }
+.clog.ok   { color: #6FCF70; }
+.clog.warn { color: var(--warning); }
+.clog.err  { color: #E87070; }
+.clog.info { color: #7ABFE8; }
+
+.clog .clog-prefix {
+  color: var(--gold-dark);
+  margin-right: 6px;
+}
+
+/*
+  AJOUTÉ v2.2 :
+  .clog-ts — horodatage des lignes de console.
+  Retiré de l'inline <style> dans index.html.
+*/
+.clog-ts {
+  color: var(--ash-deep);
+  font-size: 10px;
+  margin-right: 8px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+  user-select: none;
+}
 
 .console-footer {
   padding: 9px 20px;
@@ -2033,7 +2077,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .console-indicator {
   display: flex; align-items: center; gap: 6px;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2052,7 +2096,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .console-progress {
   margin-left: auto;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px;
   color: var(--gold-dark);
 }
@@ -2072,7 +2116,6 @@ input, select, textarea { font: inherit; color: inherit; }
   overflow: hidden;
 }
 
-/* Ligne supérieure d'accent */
 .ticker-bar::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 1px;
@@ -2080,7 +2123,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .ticker-badge {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 7px; font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -2109,7 +2152,6 @@ input, select, textarea { font: inherit; color: inherit; }
   white-space: nowrap;
   animation: tickerScroll 35s linear infinite;
 }
-
 .ticker-inner:hover { animation-play-state: paused; }
 
 @keyframes tickerScroll {
@@ -2118,15 +2160,14 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .ticker-item {
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   font-style: italic;
   font-size: 12px;
   color: var(--ash);
   display: flex; align-items: center; gap: 6px;
 }
-
-.ticker-item strong  { font-style: normal; font-weight: 600; color: var(--parchment-warm); }
-.ticker-item .tdot   { width: 4px; height: 4px; border-radius: 50%; background: var(--gold-dark); flex-shrink: 0; }
+.ticker-item strong { font-style: normal; font-weight: 600; color: var(--parchment-warm); }
+.ticker-item .tdot  { width: 4px; height: 4px; border-radius: 50%; background: var(--gold-dark); flex-shrink: 0; }
 
 .ticker-sep {
   color: var(--gold-deep);
@@ -2151,8 +2192,7 @@ input, select, textarea { font: inherit; color: inherit; }
   min-width: 280px; max-width: 340px;
   display: flex; align-items: flex-start; gap: 12px;
   padding: 14px 16px;
-  background:
-    linear-gradient(160deg, rgba(12,10,7,0.97) 0%, rgba(8,6,4,0.98) 100%);
+  background: linear-gradient(160deg, rgba(12,10,7,0.97) 0%, rgba(8,6,4,0.98) 100%);
   border: 1px solid var(--gold-border);
   position: relative; overflow: hidden;
   pointer-events: all;
@@ -2167,17 +2207,28 @@ input, select, textarea { font: inherit; color: inherit; }
   to   { opacity: 1; transform: translateX(0) scale(1); }
 }
 
-/* Accent coloré supérieur */
+/*
+  AJOUTÉ v2.2 :
+  .notif.fade-out — classe ajoutée par le renderer après 4s pour congédier
+  la notification. Sans cette règle, l'élément disparaissait brusquement.
+*/
+.notif.fade-out {
+  animation: notifOut 0.5s var(--ease-in-out) forwards;
+}
+@keyframes notifOut {
+  from { opacity: 1; transform: translateX(0) scale(1); max-height: 100px; }
+  to   { opacity: 0; transform: translateX(20px) scale(0.96); max-height: 0; padding-top: 0; padding-bottom: 0; margin: 0; }
+}
+
 .notif::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 2px;
 }
-.notif.success::before { background: linear-gradient(90deg, var(--online), rgba(76,175,80,0.3)); }
-.notif.warning::before { background: linear-gradient(90deg, var(--warning), rgba(200,136,42,0.3)); }
+.notif.success::before { background: linear-gradient(90deg, var(--online),      rgba(76,175,80,0.3)); }
+.notif.warning::before { background: linear-gradient(90deg, var(--warning),     rgba(200,136,42,0.3)); }
 .notif.error::before   { background: linear-gradient(90deg, var(--blood-vivid), rgba(192,48,42,0.3)); }
-.notif.info::before    { background: linear-gradient(90deg, var(--gold-dark), rgba(122,90,16,0.3)); }
+.notif.info::before    { background: linear-gradient(90deg, var(--gold-dark),   rgba(122,90,16,0.3)); }
 
-/* Barre de durée */
 .notif-timer {
   position: absolute; bottom: 0; left: 0; height: 2px;
   background: rgba(201,168,76,0.3);
@@ -2186,11 +2237,10 @@ input, select, textarea { font: inherit; color: inherit; }
 @keyframes notifTimer { from { width: 100%; } to { width: 0%; } }
 
 .notif-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-
 .notif-content { flex: 1; min-width: 0; }
 
 .notif-title {
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 10px; font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--gold-light);
@@ -2222,9 +2272,9 @@ input, select, textarea { font: inherit; color: inherit; }
   content: attr(data-tooltip);
   position: absolute;
   bottom: calc(100% + 8px);
-  left: 50%; transform: translateX(-50%);
+  left: 50%;
   white-space: nowrap;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -2252,19 +2302,10 @@ input, select, textarea { font: inherit; color: inherit; }
 .hidden { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
 
-/* Séparateur décoratif horizontal */
-.h-divider {
-  display: flex; align-items: center; gap: 12px;
-  margin: 8px 0;
-}
+.h-divider { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
 .h-divider-line { flex: 1; height: 1px; background: var(--gold-border); }
-.h-divider-gem {
-  width: 5px; height: 5px;
-  background: var(--gold-dark);
-  transform: rotate(45deg);
-}
+.h-divider-gem  { width: 5px; height: 5px; background: var(--gold-dark); transform: rotate(45deg); }
 
-/* Fade-in générique */
 .fade-in { animation: fadeIn 0.4s var(--ease-out) both; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -2282,15 +2323,16 @@ input, select, textarea { font: inherit; color: inherit; }
   100% { background-position: -200% center; }
 }
 
-/* Bouton standard */
+/* Boutons génériques */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 20px;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 9px; font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   transition: all var(--t-mid) var(--ease-out);
+  cursor: pointer;
 }
 
 .btn-primary {

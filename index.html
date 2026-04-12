@@ -3,10 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!--
+    Content Security Policy — Electron desktop app (file:// origin)
+    - default-src 'self'         : tout vient du disque local
+    - style-src 'self' 'unsafe-inline' : les CSS inline dynamiques (loader, slider pct)
+    - font-src 'self' data:      : polices locales ou base64
+    - img-src 'self' data:       : images locales ou data-URI
+    - connect-src http://* https://* : requêtes IPC fetch depuis le main process
+      (en pratique le renderer ne fait pas de fetch direct — tout passe par IPC)
+    - script-src 'self'          : renderer-premium.js local uniquement
+    - object-src 'none'          : pas de Flash/PDF embarqué
+  -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 style-src 'self' 'unsafe-inline';
+                 font-src 'self' data:;
+                 img-src 'self' data:;
+                 script-src 'self';
+                 connect-src 'none';
+                 object-src 'none';" />
+
   <title>Royaume de Valdris — Launcher</title>
+
+  <!-- Polices Google (si disponibles, chargées depuis le cache local de l'OS) -->
+  <!-- Désactivées dans la CSP ci-dessus — à décommenter si vous pré-bundlez les fonts -->
+  <!--
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  -->
+
   <link rel="stylesheet" href="./css/style.css" />
-  <link rel="stylesheet" href="./css/rules.css">
-  <link rel="stylesheet" href="./css/loader.css">
+  <link rel="stylesheet" href="./css/rules.css" />
+  <link rel="stylesheet" href="./css/loader.css" />
+
+  <!-- Style minimal pour le timestamp console (peut aller dans style.css) -->
+  <style>
+    .clog-ts {
+      color: var(--ash-dark);
+      font-size: 11px;
+      margin-right: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
 </head>
 <body>
 
@@ -20,14 +60,14 @@
   <!-- ══════════════════════════════════════
        LOADER
   ══════════════════════════════════════ -->
-  <div class="loader-screen" id="loader">
-    <div class="loader-particles">
+  <div class="loader-screen" id="loader" role="status" aria-label="Chargement du launcher">
+    <div class="loader-particles" aria-hidden="true">
       <div class="loader-particle"></div><div class="loader-particle"></div>
       <div class="loader-particle"></div><div class="loader-particle"></div>
       <div class="loader-particle"></div><div class="loader-particle"></div>
       <div class="loader-particle"></div>
     </div>
-    <div class="loader-emblem">
+    <div class="loader-emblem" aria-hidden="true">
       <div class="loader-ring-outer"></div>
       <div class="loader-ring-inner"></div>
       <div class="loader-ring-marks"></div>
@@ -37,12 +77,12 @@
     <div class="loader-subtitle">Forge · Combat · Survie</div>
     <div class="loader-progress-wrap">
       <div class="loader-status" id="loader-status">Invocation des runes…</div>
-      <div class="loader-track">
+      <div class="loader-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="loader-status">
         <div class="loader-fill" id="loader-fill" style="width:0%"></div>
       </div>
       <div class="loader-ornament">
         <span class="loader-pct" id="loader-pct">0%</span>
-        <span class="loader-version">v2.1.0</span>
+        <span class="loader-version">v2.2.0</span>
       </div>
     </div>
   </div>
@@ -50,38 +90,38 @@
   <!-- ══════════════════════════════════════
        APPLICATION
   ══════════════════════════════════════ -->
-  <div class="app-frame" id="app" style="opacity:0;transition:opacity 0.7s;">
+  <div class="app-frame" id="app" style="opacity:0;transition:opacity 0.7s;" aria-hidden="true">
 
     <!-- TITLEBAR -->
-    <header class="titlebar">
+    <header class="titlebar" role="banner">
       <div class="titlebar-left">
-        <div class="tb-crest">⚔</div>
+        <div class="tb-crest" aria-hidden="true">⚔</div>
         <span class="tb-name">Royaume de Valdris</span>
-        <div class="tb-sep"></div>
-        <span class="tb-version">v2.1</span>
+        <div class="tb-sep" aria-hidden="true"></div>
+        <span class="tb-version">v2.2</span>
       </div>
-      <nav class="titlebar-nav">
-        <button class="nav-tab active" data-page="home">
-          <span class="nav-tab-icon">🏰</span>
+      <nav class="titlebar-nav" aria-label="Navigation principale">
+        <button class="nav-tab active" data-page="home"     aria-current="page">
+          <span class="nav-tab-icon" aria-hidden="true">🏰</span>
           <span class="nav-tab-label">Accueil</span>
         </button>
         <button class="nav-tab" data-page="servers">
-          <span class="nav-tab-icon">⚔</span>
+          <span class="nav-tab-icon" aria-hidden="true">⚔</span>
           <span class="nav-tab-label">Royaumes</span>
         </button>
         <button class="nav-tab" data-page="news">
-          <span class="nav-tab-icon">📜</span>
+          <span class="nav-tab-icon" aria-hidden="true">📜</span>
           <span class="nav-tab-label">Chroniques</span>
         </button>
         <button class="nav-tab" data-page="settings">
-          <span class="nav-tab-icon">⚙</span>
+          <span class="nav-tab-icon" aria-hidden="true">⚙</span>
           <span class="nav-tab-label">Forge</span>
         </button>
       </nav>
-      <div class="titlebar-wm">
-        <button class="wm-btn wm-min" onclick="window.launcher?.minimize()">─</button>
-        <button class="wm-btn wm-max" onclick="window.launcher?.maximize()">□</button>
-        <button class="wm-btn wm-cls" onclick="window.launcher?.close()">✕</button>
+      <div class="titlebar-wm" aria-label="Contrôles de fenêtre">
+        <button class="wm-btn wm-min" onclick="window.launcher?.minimize()" title="Réduire"   aria-label="Réduire">─</button>
+        <button class="wm-btn wm-max" onclick="window.launcher?.maximize()" title="Agrandir"  aria-label="Agrandir">□</button>
+        <button class="wm-btn wm-cls" onclick="window.launcher?.close()"   title="Fermer"    aria-label="Fermer">✕</button>
       </div>
     </header>
 
@@ -89,10 +129,10 @@
     <div class="app-body">
 
       <!-- SIDEBAR -->
-      <aside class="sidebar">
+      <aside class="sidebar" aria-label="Informations serveur">
         <div class="sidebar-inner">
           <div class="sidebar-crest">
-            <div class="shield-container">
+            <div class="shield-container" aria-hidden="true">
               <div class="shield-body"></div>
               <div class="shield-inner-border"></div>
               <div class="shield-cross"><span class="shield-icon">⚔</span></div>
@@ -102,13 +142,13 @@
             <div class="sidebar-motto">Règne. Combats. Survives.</div>
           </div>
 
-          <div class="orn-sep">
+          <div class="orn-sep" aria-hidden="true">
             <span class="orn-line"></span><span class="orn-gem"></span><span class="orn-line right"></span>
           </div>
 
-          <div class="sidebar-stats">
+          <div class="sidebar-stats" aria-label="Statistiques serveur">
             <div class="sstat highlight">
-              <span class="sstat-num">127</span>
+              <span class="sstat-num" id="stat-capacity">127</span>
               <span class="sstat-label">Capacité</span>
             </div>
             <div class="sstat highlight">
@@ -121,51 +161,64 @@
             </div>
           </div>
 
-          <div class="orn-sep">
+          <div class="orn-sep" aria-hidden="true">
             <span class="orn-line"></span><span class="orn-gem"></span><span class="orn-line right"></span>
           </div>
 
-          <div class="server-status-pill online" id="server-pill">
-            <span class="status-pulse"></span>
+          <div class="server-status-pill offline" id="server-pill" role="status">
+            <span class="status-pulse" aria-hidden="true"></span>
             <span class="status-text">Vérification…</span>
-            <span class="status-ping" id="server-ping-display">—</span>
+            <span class="status-ping" id="server-ping-display" aria-label="Ping serveur">—</span>
           </div>
 
-          <div class="orn-sep">
+          <div class="orn-sep" aria-hidden="true">
             <span class="orn-line"></span><span class="orn-gem"></span><span class="orn-line right"></span>
           </div>
 
-          <nav class="sidebar-nav">
-            <a class="slink" href="#">
-              <span class="slink-icon">🗺</span>
-              <span class="slink-label">Éditeur de Carte</span>
-              <span class="slink-arr">›</span>
-            </a>
-            <a class="slink" href="#">
-              <span class="slink-icon">📖</span>
-              <span class="slink-label">Règles du Royaume</span>
-              <span class="slink-arr">›</span>
-            </a>
-            <a class="slink" href="#">
-              <span class="slink-icon">💬</span>
+          <!--
+            data-url : URL à ouvrir dans le navigateur système via window.launcher.openExternal.
+            Seules les URLs de la liste blanche IPC (main.mjs) sont autorisées.
+            Remplacez les valeurs par celles de votre serveur.
+          -->
+          <nav class="sidebar-nav" aria-label="Liens rapides">
+            <a class="slink" href="#" role="button"
+               data-url="https://discord.gg/VOTRE_INVITE"
+               title="Ouvrir le Discord dans le navigateur">
+              <span class="slink-icon" aria-hidden="true">💬</span>
               <span class="slink-label">Discord</span>
-              <span class="slink-badge">142</span>
-              <span class="slink-arr">›</span>
+              <span class="slink-badge" aria-label="142 membres en ligne">142</span>
+              <span class="slink-arr" aria-hidden="true">›</span>
             </a>
-            <a class="slink" href="#">
-              <span class="slink-icon">📜</span>
+            <a class="slink" href="#" role="button"
+               data-url="https://github.com/VOTRE_ORG/VOTRE_REPO/wiki"
+               title="Ouvrir le guide de jeu dans le navigateur">
+              <span class="slink-icon" aria-hidden="true">📖</span>
+              <span class="slink-label">Règles du Royaume</span>
+              <span class="slink-arr" aria-hidden="true">›</span>
+            </a>
+            <a class="slink" href="#" role="button"
+               data-url="https://github.com/VOTRE_ORG/VOTRE_REPO"
+               title="Ouvrir le guide de jeu dans le navigateur">
+              <span class="slink-icon" aria-hidden="true">📜</span>
               <span class="slink-label">Guide de Jeu</span>
-              <span class="slink-arr">›</span>
+              <span class="slink-arr" aria-hidden="true">›</span>
+            </a>
+            <a class="slink" href="#" role="button"
+               data-url="https://cfx.re/join/VOTRE_CODE"
+               title="Ouvrir l'éditeur de carte dans le navigateur">
+              <span class="slink-icon" aria-hidden="true">🗺</span>
+              <span class="slink-label">Carte du Royaume</span>
+              <span class="slink-arr" aria-hidden="true">›</span>
             </a>
           </nav>
 
           <div class="sidebar-user">
-            <div class="user-avatar">S</div>
+            <div class="user-avatar" aria-hidden="true">S</div>
             <div class="user-info">
               <span class="user-name">Skilo</span>
               <span class="user-rank">Seigneur de Guerre</span>
             </div>
-            <div class="user-online-dot"></div>
+            <div class="user-online-dot" title="En ligne" aria-label="En ligne"></div>
           </div>
         </div>
       </aside>
@@ -174,12 +227,12 @@
       <main class="content-area">
 
         <!-- PAGE ACCUEIL -->
-        <section class="page active" id="page-home">
+        <section class="page active" id="page-home" aria-label="Accueil">
           <div class="hero-canvas">
-            <div class="hero-castle-bg"></div>
-            <div class="hero-blood-light"></div>
-            <div class="hero-ground-haze"></div>
-            <div class="hero-flames">
+            <div class="hero-castle-bg" aria-hidden="true"></div>
+            <div class="hero-blood-light" aria-hidden="true"></div>
+            <div class="hero-ground-haze" aria-hidden="true"></div>
+            <div class="hero-flames" aria-hidden="true">
               <div class="flame flame-a"></div>
               <div class="flame flame-b"></div>
               <div class="flame flame-c"></div>
@@ -192,31 +245,33 @@
                 <p class="hero-desc">Forgez votre légende dans les cendres de la guerre</p>
               </div>
               <div class="hero-cta">
-                <button class="play-btn" id="play-btn" onclick="launchGame()">
-                  <span class="play-icon">⚔</span>
+                <button class="play-btn" id="play-btn" onclick="launchGame()"
+                        aria-label="Lancer FiveM et rejoindre le serveur">
+                  <span class="play-icon" aria-hidden="true">⚔</span>
                   <span class="play-label">JOUER</span>
                   <span class="play-sub">FiveM · Medieval RP</span>
                 </button>
-                <button class="console-trigger" onclick="openConsole()">⊞ Console</button>
+                <button class="console-trigger" onclick="openConsole()"
+                        aria-label="Ouvrir la console du launcher">⊞ Console</button>
               </div>
             </div>
           </div>
-          <div class="activity-strip">
+          <div class="activity-strip" aria-label="Activité récente">
             <span class="activity-label">Activité récente</span>
-            <div class="activity-divider"></div>
+            <div class="activity-divider" aria-hidden="true"></div>
             <div class="activity-items">
               <div class="act-item">
-                <span class="act-dot green"></span>
+                <span class="act-dot green" aria-hidden="true"></span>
                 <span class="act-text"><strong>Aldric le Rouge</strong> vient de rejoindre</span>
                 <span class="act-time">il y a 2min</span>
               </div>
               <div class="act-item">
-                <span class="act-dot blood"></span>
+                <span class="act-dot blood" aria-hidden="true"></span>
                 <span class="act-text"><strong>Guilde des Loups</strong> a capturé Fort Sombre</span>
                 <span class="act-time">il y a 14min</span>
               </div>
               <div class="act-item">
-                <span class="act-dot gold"></span>
+                <span class="act-dot gold" aria-hidden="true"></span>
                 <span class="act-text"><strong>Tournoi des Lames</strong> commence dans 1h</span>
                 <span class="act-time">il y a 30min</span>
               </div>
@@ -225,7 +280,7 @@
         </section>
 
         <!-- PAGE SERVEURS -->
-        <section class="page" id="page-servers">
+        <section class="page" id="page-servers" aria-label="Liste des serveurs">
           <div class="page-header">
             <div class="page-title-wrap">
               <h2 class="page-title">⚔ Royaumes</h2>
@@ -233,18 +288,23 @@
             </div>
             <div class="page-controls">
               <div class="search-wrap">
-                <input class="search-input" type="text" placeholder="Rechercher un royaume…" />
+                <input class="search-input" type="search" placeholder="Rechercher un royaume…"
+                       aria-label="Rechercher un serveur" />
               </div>
-              <select class="filter-select">
+              <select class="filter-select" aria-label="Filtrer par type">
                 <option>Tous</option><option>En ligne</option><option>RP</option><option>PVP</option>
               </select>
             </div>
           </div>
           <div class="servers-body">
+            <!-- Serveur principal — données mises à jour dynamiquement -->
             <div class="scard featured">
               <div class="scard-banner">
                 <span class="scard-badge official">⚔ Serveur Officiel</span>
-                <div class="scard-status online"><span class="scard-status-dot"></span><span id="scard-main-ping">—</span></div>
+                <div class="scard-status online">
+                  <span class="scard-status-dot" aria-hidden="true"></span>
+                  <span id="scard-main-ping" aria-label="Ping du serveur principal">—</span>
+                </div>
               </div>
               <div class="scard-body">
                 <div class="scard-info">
@@ -259,17 +319,24 @@
                 </div>
                 <div class="scard-right">
                   <div class="players-display">
-                    <div class="players-bar-wrap"><div class="players-bar-fill" style="width:44%"></div></div>
-                    <span class="players-count-text">56 / 127</span>
+                    <div class="players-bar-wrap" aria-label="Occupation du serveur">
+                      <div class="players-bar-fill" style="width:0%"></div>
+                    </div>
+                    <span class="players-count-text">— / 127</span>
                   </div>
-                  <button class="scard-join-btn primary" onclick="launchGame()">Rejoindre</button>
+                  <button class="scard-join-btn primary" onclick="launchGame()"
+                          aria-label="Rejoindre le Royaume de Valdris">Rejoindre</button>
                 </div>
               </div>
             </div>
+
+            <!-- Serveur local dev -->
             <div class="scard">
               <div class="scard-banner">
                 <span class="scard-badge dev">⚙ Développement</span>
-                <div class="scard-status online"><span class="scard-status-dot"></span>&lt;1ms</div>
+                <div class="scard-status online">
+                  <span class="scard-status-dot" aria-hidden="true"></span>&lt;1ms
+                </div>
               </div>
               <div class="scard-body">
                 <div class="scard-info">
@@ -279,17 +346,25 @@
                 </div>
                 <div class="scard-right">
                   <div class="players-display">
-                    <div class="players-bar-wrap"><div class="players-bar-fill" style="width:1%"></div></div>
+                    <div class="players-bar-wrap">
+                      <div class="players-bar-fill" style="width:12%"></div>
+                    </div>
                     <span class="players-count-text">1 / 8</span>
                   </div>
-                  <button class="scard-join-btn secondary">Se connecter</button>
+                  <button class="scard-join-btn secondary"
+                          onclick="launchGame({ip:'127.0.0.1',port:30120})"
+                          aria-label="Rejoindre le serveur local">Se connecter</button>
                 </div>
               </div>
             </div>
+
+            <!-- Serveur communautaire hors ligne -->
             <div class="scard offline">
               <div class="scard-banner">
                 <span class="scard-badge local">🏹 Communauté</span>
-                <div class="scard-status offline-status"><span class="scard-status-dot"></span>Hors ligne</div>
+                <div class="scard-status offline-status">
+                  <span class="scard-status-dot" aria-hidden="true"></span>Hors ligne
+                </div>
               </div>
               <div class="scard-body">
                 <div class="scard-info">
@@ -299,10 +374,13 @@
                 </div>
                 <div class="scard-right">
                   <div class="players-display">
-                    <div class="players-bar-wrap"><div class="players-bar-fill" style="width:0%"></div></div>
+                    <div class="players-bar-wrap">
+                      <div class="players-bar-fill" style="width:0%"></div>
+                    </div>
                     <span class="players-count-text">0 / 64</span>
                   </div>
-                  <button class="scard-join-btn disabled" disabled>Indisponible</button>
+                  <button class="scard-join-btn disabled" disabled
+                          aria-disabled="true">Indisponible</button>
                 </div>
               </div>
             </div>
@@ -310,7 +388,7 @@
         </section>
 
         <!-- PAGE CHRONIQUES -->
-        <section class="page" id="page-news">
+        <section class="page" id="page-news" aria-label="Chroniques royales">
           <div class="page-header">
             <div class="page-title-wrap">
               <h2 class="page-title">📜 Chroniques Royales</h2>
@@ -324,35 +402,35 @@
               <p class="ncard-body">Les forces de la coalition des Terres Grises ont franchi les portes du col des Ombres ce matin à l'aube. Les seigneurs de Valdris appellent à la mobilisation générale. Que tout chevalier vaillant prenne les armes.</p>
               <div class="ncard-footer">
                 <span class="ncard-meta ncard-author">† Chroniqueur Royal</span>
-                <div class="ncard-sep"></div>
-                <span class="ncard-meta ncard-date">Aujourd'hui · 08h42</span>
+                <div class="ncard-sep" aria-hidden="true"></div>
+                <time class="ncard-meta ncard-date" datetime="2026-04-12T08:42">Aujourd'hui · 08h42</time>
               </div>
             </article>
             <article class="ncard type-event">
               <div class="ncard-type event">⚡ Événement</div>
-              <h3 class="ncard-title">Tournoi des Lames — Inscriptions ouvertes jusqu'au 20 Janv.</h3>
+              <h3 class="ncard-title">Tournoi des Lames — Inscriptions ouvertes jusqu'au 20 Avr.</h3>
               <p class="ncard-body">Le Grand Tournoi des Lames se tiendra dans l'arène de pierre de Valdris. Le vainqueur recevra le titre de Champion du Roi et 500 pièces d'or.</p>
               <div class="ncard-footer">
                 <span class="ncard-meta ncard-author">† Héraut du Roi</span>
-                <div class="ncard-sep"></div>
-                <span class="ncard-meta ncard-date">Hier · 18h30</span>
+                <div class="ncard-sep" aria-hidden="true"></div>
+                <time class="ncard-meta ncard-date" datetime="2026-04-11T18:30">Hier · 18h30</time>
               </div>
             </article>
             <article class="ncard type-patch">
-              <div class="ncard-type patch">⚙ Mise à jour 2.1</div>
-              <h3 class="ncard-title">Sièges de châteaux — Nouveau système implémenté</h3>
-              <p class="ncard-body">Le système de siège de châteaux fait son entrée dans Valdris. Organisez vos armées, déployez des catapultes et prenez le contrôle des forteresses stratégiques.</p>
+              <div class="ncard-type patch">⚙ Mise à jour 2.2</div>
+              <h3 class="ncard-title">Infos serveur live — Joueurs et ping en temps réel</h3>
+              <p class="ncard-body">Le launcher affiche désormais le nombre de joueurs connectés et le ping du serveur en temps réel, mis à jour toutes les 30 secondes. Les liens Discord et Guide s'ouvrent directement dans votre navigateur.</p>
               <div class="ncard-footer">
                 <span class="ncard-meta ncard-author">† Équipe dev</span>
-                <div class="ncard-sep"></div>
-                <span class="ncard-meta ncard-date">14 Jan · 12h00</span>
+                <div class="ncard-sep" aria-hidden="true"></div>
+                <time class="ncard-meta ncard-date" datetime="2026-04-12T12:00">12 Avr · 12h00</time>
               </div>
             </article>
           </div>
         </section>
 
         <!-- PAGE FORGE -->
-        <section class="page" id="page-settings">
+        <section class="page" id="page-settings" aria-label="Paramètres du launcher">
           <div class="page-header">
             <div class="page-title-wrap">
               <h2 class="page-title">⚙ Forge du Launcher</h2>
@@ -365,11 +443,12 @@
               <div class="set-row">
                 <div class="set-label">
                   <span class="set-label-main">Chemin vers FiveM</span>
-                  <span class="set-label-sub">Chemin absolu vers FiveM.exe</span>
+                  <span class="set-label-sub">Chemin absolu vers FiveM.exe (détecté automatiquement)</span>
                 </div>
                 <div class="set-control">
-                  <div class="path-display" id="fivem-path-display">Détection en cours…</div>
-                  <button class="set-btn" id="btn-browse-fivem">Parcourir</button>
+                  <div class="path-display" id="fivem-path-display" aria-label="Chemin FiveM actuel">Détection en cours…</div>
+                  <button class="set-btn" id="btn-browse-fivem"
+                          aria-label="Parcourir pour sélectionner FiveM.exe">Parcourir</button>
                 </div>
               </div>
             </div>
@@ -377,45 +456,53 @@
               <div class="set-group-hd"><span class="set-group-title">Connexion Serveur</span></div>
               <div class="set-row">
                 <div class="set-label">
-                  <span class="set-label-main">IP du serveur</span>
+                  <label class="set-label-main" for="setting-ip">IP du serveur</label>
                   <span class="set-label-sub">Adresse de connexion par défaut</span>
                 </div>
                 <div class="set-control">
-                  <input id="setting-ip" class="set-input" type="text" value="127.0.0.1" style="width:180px;" />
+                  <input id="setting-ip" class="set-input" type="text"
+                         value="127.0.0.1" style="width:180px;"
+                         autocomplete="off" spellcheck="false"
+                         aria-label="Adresse IP du serveur" />
                 </div>
               </div>
               <div class="set-row">
                 <div class="set-label">
-                  <span class="set-label-main">Port</span>
+                  <label class="set-label-main" for="setting-port">Port</label>
                   <span class="set-label-sub">Port FiveM (défaut : 30120)</span>
                 </div>
                 <div class="set-control">
-                  <input id="setting-port" class="set-input" type="number" value="30120" style="width:120px;" />
+                  <input id="setting-port" class="set-input" type="number"
+                         value="30120" min="1" max="65535" style="width:120px;"
+                         aria-label="Port du serveur" />
                 </div>
               </div>
             </div>
             <div class="set-group">
-              <div class="set-group-hd"><span class="set-group-title">Audio & Ambiance</span></div>
+              <div class="set-group-hd"><span class="set-group-title">Audio &amp; Ambiance</span></div>
               <div class="set-row">
                 <div class="set-label">
-                  <span class="set-label-main">Musique du launcher</span>
+                  <label class="set-label-main" for="setting-music">Musique du launcher</label>
                   <span class="set-label-sub">Thème musical médiéval en arrière-plan</span>
                 </div>
                 <div class="set-control">
                   <label class="toggle-label">
-                    <input id="setting-music" type="checkbox" checked />
-                    <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                    <input id="setting-music" type="checkbox" checked
+                           aria-label="Activer la musique du launcher" />
+                    <div class="toggle-track" aria-hidden="true"><div class="toggle-thumb"></div></div>
                   </label>
                 </div>
               </div>
               <div class="set-row">
                 <div class="set-label">
-                  <span class="set-label-main">Volume ambiance</span>
+                  <label class="set-label-main" for="setting-volume">Volume ambiance</label>
                 </div>
                 <div class="set-control">
-                  <input id="setting-volume" type="range" class="set-slider" min="0" max="100" value="65"
-                    oninput="this.style.setProperty('--pct',this.value+'%');document.getElementById('setting-volume-val').textContent=this.value+'%'" />
-                  <span id="setting-volume-val" class="slider-val">65%</span>
+                  <input id="setting-volume" type="range" class="set-slider"
+                         min="0" max="100" value="65"
+                         aria-label="Volume de la musique"
+                         oninput="this.style.setProperty('--pct',this.value+'%');document.getElementById('setting-volume-val').textContent=this.value+'%'" />
+                  <span id="setting-volume-val" class="slider-val" aria-live="polite">65%</span>
                 </div>
               </div>
             </div>
@@ -426,55 +513,61 @@
     </div>
 
     <!-- TICKER -->
-    <div class="ticker-bar">
-      <span class="ticker-badge">⚔ Décrets</span>
-      <div class="ticker-divider"></div>
+    <div class="ticker-bar" aria-live="off" aria-label="Annonces du royaume">
+      <span class="ticker-badge" aria-hidden="true">⚔ Décrets</span>
+      <div class="ticker-divider" aria-hidden="true"></div>
       <div class="ticker-track">
         <div class="ticker-inner">
-          <span class="ticker-item"><span class="tdot"></span><strong>Mise à jour 2.1</strong> — Sièges de châteaux disponibles</span>
-          <span class="ticker-sep">✦</span>
-          <span class="ticker-item"><span class="tdot"></span><strong>Tournoi Royal</strong> — Inscriptions jusqu'au 20 Janv.</span>
-          <span class="ticker-sep">✦</span>
-          <span class="ticker-item"><span class="tdot"></span><strong>Forge</strong> — 14 nouvelles armures légendaires</span>
-          <span class="ticker-sep">✦</span>
-          <span class="ticker-item"><span class="tdot"></span><strong>Événement Rare</strong> — Dragon aperçu aux portes de l'Est</span>
-          <span class="ticker-sep">✦</span>
-          <span class="ticker-item"><span class="tdot"></span><strong>Guilde des Loups</strong> tient 3 châteaux stratégiques</span>
-          <span class="ticker-sep">✦</span>
-          <span class="ticker-item"><span class="tdot"></span><strong>Mise à jour 2.1</strong> — Sièges de châteaux disponibles</span>
-          <span class="ticker-sep">✦</span>
-          <span class="ticker-item"><span class="tdot"></span><strong>Tournoi Royal</strong> — Inscriptions jusqu'au 20 Janv.</span>
-          <span class="ticker-sep">✦</span>
-          <span class="ticker-item"><span class="tdot"></span><strong>Forge</strong> — 14 nouvelles armures légendaires</span>
-          <span class="ticker-sep">✦</span>
-          <span class="ticker-item"><span class="tdot"></span><strong>Événement Rare</strong> — Dragon aperçu aux portes de l'Est</span>
-          <span class="ticker-sep">✦</span>
-          <span class="ticker-item"><span class="tdot"></span><strong>Guilde des Loups</strong> tient 3 châteaux stratégiques</span>
+          <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Mise à jour 2.2</strong> — Infos serveur live disponibles</span>
+          <span class="ticker-sep" aria-hidden="true">✦</span>
+          <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Tournoi Royal</strong> — Inscriptions jusqu'au 20 Avr.</span>
+          <span class="ticker-sep" aria-hidden="true">✦</span>
+          <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Forge</strong> — 14 nouvelles armures légendaires</span>
+          <span class="ticker-sep" aria-hidden="true">✦</span>
+          <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Événement Rare</strong> — Dragon aperçu aux portes de l'Est</span>
+          <span class="ticker-sep" aria-hidden="true">✦</span>
+          <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Guilde des Loups</strong> tient 3 châteaux stratégiques</span>
+          <span class="ticker-sep" aria-hidden="true">✦</span>
+          <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Mise à jour 2.2</strong> — Infos serveur live disponibles</span>
+          <span class="ticker-sep" aria-hidden="true">✦</span>
+          <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Tournoi Royal</strong> — Inscriptions jusqu'au 20 Avr.</span>
+          <span class="ticker-sep" aria-hidden="true">✦</span>
+          <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Forge</strong> — 14 nouvelles armures légendaires</span>
+          <span class="ticker-sep" aria-hidden="true">✦</span>
+          <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Événement Rare</strong> — Dragon aperçu aux portes de l'Est</span>
+          <span class="ticker-sep" aria-hidden="true">✦</span>
+          <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Guilde des Loups</strong> tient 3 châteaux stratégiques</span>
         </div>
       </div>
     </div>
 
-  </div>
-  <!-- /app -->
+  </div><!-- /app -->
 
   <!-- CONSOLE -->
-  <div class="console-overlay hidden" id="console-overlay">
+  <div class="console-overlay hidden" id="console-overlay"
+       role="dialog" aria-modal="true" aria-label="Console du launcher">
     <div class="console-panel">
       <div class="console-hd">
         <span class="console-title">Journal du Serveur</span>
-        <button class="console-close-btn" onclick="closeConsole()">✕</button>
+        <button class="console-close-btn" onclick="closeConsole()"
+                aria-label="Fermer la console">✕</button>
       </div>
-      <div class="console-body" id="console-body">
-        <div class="clog info"><span class="clog-prefix">[SYS]</span> Initialisation du Royaume de Valdris…</div>
+      <div class="console-body" id="console-body" role="log" aria-live="polite">
+        <div class="clog info">
+          <span class="clog-ts" aria-hidden="true">00:00:00</span>
+          <span class="clog-prefix">[SYS]</span> Initialisation du Royaume de Valdris…
+        </div>
       </div>
       <div class="console-footer">
-        <div class="console-indicator"><div class="console-dot"></div>Actif</div>
+        <div class="console-indicator">
+          <div class="console-dot" aria-hidden="true"></div>Actif
+        </div>
       </div>
     </div>
   </div>
 
   <!-- NOTIFICATIONS -->
-  <div class="notif-stack" id="notif-stack"></div>
+  <div class="notif-stack" id="notif-stack" role="region" aria-live="assertive" aria-label="Notifications"></div>
 
   <script src="renderer-premium.js"></script>
 </body>

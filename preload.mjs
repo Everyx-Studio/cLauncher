@@ -1,7 +1,9 @@
 // preload.mjs — Pont contextBridge · Royaume de Valdris Launcher
-// Expose window.launcher dans le renderer avec isolation stricte.
-// Correction v2.1 : l'ancienne version exposait window.launcherAPI
-// mais tout le code HTML/renderer référençait window.launcher → bug silencieux.
+// v2.2 — Améliorations :
+//   - getServerInfo(ip, port) : infos live du serveur (joueurs, hostname, ping)
+//   - openExternal(url)       : ouverture sécurisée via liste blanche IPC
+//   - getVersion()            : version de l'app depuis Electron
+//   - startLocalServer retourne maintenant { ok, error } au lieu d'un simple code
 
 import { contextBridge, ipcRenderer } from 'electron';
 
@@ -15,39 +17,46 @@ contextBridge.exposeInMainWorld('launcher', {
   maximize: () => ipcRenderer.invoke('win-maximize'),
   close:    () => ipcRenderer.invoke('win-close'),
 
+  // ── Version de l'application ──────────────────────────────────
+  getVersion: () => ipcRenderer.invoke('get-version'),
+
   // ── Configuration persistante ─────────────────────────────────
-  // Retourne un objet { fivemPath, serverIp, serverPort, musicEnabled, musicVolume }
+  // Retourne { fivemPath, serverIp, serverPort, musicEnabled, musicVolume }
   getConfig: ()        => ipcRenderer.invoke('get-config'),
   setConfig: (updates) => ipcRenderer.invoke('set-config', updates),
 
   // ── FiveM ─────────────────────────────────────────────────────
-  // Tente de détecter automatiquement FiveM.exe sur le système
   detectFiveM: () => ipcRenderer.invoke('detect-fivem'),
+  selectPath:  () => ipcRenderer.invoke('select-fivem-path'),
 
-  // Ouvre un sélecteur de fichier natif → retourne le chemin choisi ou null
-  selectPath: () => ipcRenderer.invoke('select-fivem-path'),
-
-  // Lance FiveM et connecte au serveur
-  // opts = { ip: string, port: number, fivemPath?: string }
-  // Retourne { ok: boolean, method?: string, error?: string, warning?: string }
+  // opts = { ip, port, fivemPath? }
+  // → { ok, method?, error?, warning? }
   launchGame: (opts) => ipcRenderer.invoke('launch-fivem', opts),
 
-  // ── Ping serveur (via IPC → pas de contrainte CORS renderer) ──
-  // Retourne { online: boolean, ms: number|null }
+  // ── Ping serveur léger (HEAD /info.json) ──────────────────────
+  // → { online: boolean, ms: number|null }
   pingServer: (ip, port) => ipcRenderer.invoke('ping-server', { ip, port }),
 
+  // ── Info serveur complète ─────────────────────────────────────
+  // → { online, ms, playerCount, players, hostname, maxPlayers, gametype, mapname }
+  getServerInfo: (ip, port) => ipcRenderer.invoke('get-server-info', { ip, port }),
+
+  // ── Ouverture URL externe (liste blanche) ─────────────────────
+  // → { ok: boolean, error?: string }
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+
   // ── Abonnement aux événements IPC ─────────────────────────────
-  // Usage : window.launcher.on('server-output', (data) => { ... })
+  // Usage : const unsub = window.launcher.on('server-output', fn)
+  // Retourne une fonction de désinscription.
   on: (channel, callback) => {
-    if (!ALLOWED_CHANNELS.includes(channel)) return;
-    // Wrapper pour ne pas exposer ipcRenderer directement
+    if (!ALLOWED_CHANNELS.includes(channel)) return () => {};
     const handler = (_event, ...args) => callback(...args);
     ipcRenderer.on(channel, handler);
-    // Retourne une fonction de désinscription
     return () => ipcRenderer.removeListener(channel, handler);
   },
 
   // ── Serveur local dev ─────────────────────────────────────────
+  // → { ok: boolean, code?: number, error?: string }
   startLocalServer: () => ipcRenderer.invoke('start-local-server'),
   stopServer:       () => ipcRenderer.invoke('stop-server'),
 });
