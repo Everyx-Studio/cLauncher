@@ -3,18 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!--
-    Content Security Policy — Electron desktop app (file:// origin)
-    - default-src 'self'         : tout vient du disque local
-    - style-src 'self' 'unsafe-inline' : les CSS inline dynamiques (loader, slider pct)
-    - font-src 'self' data:      : polices locales ou base64
-    - img-src 'self' data:       : images locales ou data-URI
-    - connect-src http://* https://* : requêtes IPC fetch depuis le main process
-      (en pratique le renderer ne fait pas de fetch direct — tout passe par IPC)
-    - script-src 'self'          : renderer-premium.js local uniquement
-    - object-src 'none'          : pas de Flash/PDF embarqué
-  -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self';
                  style-src 'self' 'unsafe-inline';
@@ -23,22 +11,10 @@
                  script-src 'self';
                  connect-src 'none';
                  object-src 'none';" />
-
   <title>Royaume de Valdris — Launcher</title>
-
-  <!-- Polices Google (si disponibles, chargées depuis le cache local de l'OS) -->
-  <!-- Désactivées dans la CSP ci-dessus — à décommenter si vous pré-bundlez les fonts -->
-  <!--
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  -->
-
   <link rel="stylesheet" href="./css/style.css" />
   <link rel="stylesheet" href="./css/rules.css" />
   <link rel="stylesheet" href="./css/loader.css" />
-
-  <!-- Style minimal pour le timestamp console (peut aller dans style.css) -->
   <style>
     .clog-ts {
       color: var(--ash-dark);
@@ -49,8 +25,6 @@
   </style>
 </head>
 <body>
-
-  <!-- Couches atmosphériques -->
   <div class="atmo-base"></div>
   <div class="atmo-grid"></div>
   <div class="atmo-grain"></div>
@@ -101,7 +75,7 @@
         <span class="tb-version">v2.2</span>
       </div>
       <nav class="titlebar-nav" aria-label="Navigation principale">
-        <button class="nav-tab active" data-page="home"     aria-current="page">
+        <button class="nav-tab active" data-page="home" aria-current="page">
           <span class="nav-tab-icon" aria-hidden="true">🏰</span>
           <span class="nav-tab-label">Accueil</span>
         </button>
@@ -119,9 +93,9 @@
         </button>
       </nav>
       <div class="titlebar-wm" aria-label="Contrôles de fenêtre">
-        <button class="wm-btn wm-min" onclick="window.launcher?.minimize()" title="Réduire"   aria-label="Réduire">─</button>
-        <button class="wm-btn wm-max" onclick="window.launcher?.maximize()" title="Agrandir"  aria-label="Agrandir">□</button>
-        <button class="wm-btn wm-cls" onclick="window.launcher?.close()"   title="Fermer"    aria-label="Fermer">✕</button>
+        <button class="wm-btn wm-min" title="Réduire"  aria-label="Réduire">─</button>
+        <button class="wm-btn wm-max" title="Agrandir" aria-label="Agrandir">□</button>
+        <button class="wm-btn wm-cls" title="Fermer"   aria-label="Fermer">✕</button>
       </div>
     </header>
 
@@ -141,11 +115,9 @@
             <div class="sidebar-kingdom">MEDIEVAL<br>KINGDOM RP</div>
             <div class="sidebar-motto">Règne. Combats. Survives.</div>
           </div>
-
           <div class="orn-sep" aria-hidden="true">
             <span class="orn-line"></span><span class="orn-gem"></span><span class="orn-line right"></span>
           </div>
-
           <div class="sidebar-stats" aria-label="Statistiques serveur">
             <div class="sstat highlight">
               <span class="sstat-num" id="stat-capacity">127</span>
@@ -160,26 +132,17 @@
               <span class="sstat-label">Guildes</span>
             </div>
           </div>
-
           <div class="orn-sep" aria-hidden="true">
             <span class="orn-line"></span><span class="orn-gem"></span><span class="orn-line right"></span>
           </div>
-
           <div class="server-status-pill offline" id="server-pill" role="status">
             <span class="status-pulse" aria-hidden="true"></span>
             <span class="status-text">Vérification…</span>
             <span class="status-ping" id="server-ping-display" aria-label="Ping serveur">—</span>
           </div>
-
           <div class="orn-sep" aria-hidden="true">
             <span class="orn-line"></span><span class="orn-gem"></span><span class="orn-line right"></span>
           </div>
-
-          <!--
-            data-url : URL à ouvrir dans le navigateur système via window.launcher.openExternal.
-            Seules les URLs de la liste blanche IPC (main.mjs) sont autorisées.
-            Remplacez les valeurs par celles de votre serveur.
-          -->
           <nav class="sidebar-nav" aria-label="Liens rapides">
             <a class="slink" href="#" role="button"
                data-url="https://discord.gg/VOTRE_INVITE"
@@ -205,13 +168,12 @@
             </a>
             <a class="slink" href="#" role="button"
                data-url="https://cfx.re/join/VOTRE_CODE"
-               title="Ouvrir l'éditeur de carte dans le navigateur">
+               title="Ouvrir la carte dans le navigateur">
               <span class="slink-icon" aria-hidden="true">🗺</span>
               <span class="slink-label">Carte du Royaume</span>
               <span class="slink-arr" aria-hidden="true">›</span>
             </a>
           </nav>
-
           <div class="sidebar-user">
             <div class="user-avatar" aria-hidden="true">S</div>
             <div class="user-info">
@@ -245,14 +207,12 @@
                 <p class="hero-desc">Forgez votre légende dans les cendres de la guerre</p>
               </div>
               <div class="hero-cta">
-                <button class="play-btn" id="play-btn" onclick="launchGame()"
-                        aria-label="Lancer FiveM et rejoindre le serveur">
+                <button class="play-btn" id="play-btn" aria-label="Lancer FiveM et rejoindre le serveur">
                   <span class="play-icon" aria-hidden="true">⚔</span>
                   <span class="play-label">JOUER</span>
                   <span class="play-sub">FiveM · Medieval RP</span>
                 </button>
-                <button class="console-trigger" onclick="openConsole()"
-                        aria-label="Ouvrir la console du launcher">⊞ Console</button>
+                <button class="console-trigger" id="btn-open-console" aria-label="Ouvrir la console du launcher">⊞ Console</button>
               </div>
             </div>
           </div>
@@ -297,7 +257,6 @@
             </div>
           </div>
           <div class="servers-body">
-            <!-- Serveur principal — données mises à jour dynamiquement -->
             <div class="scard featured">
               <div class="scard-banner">
                 <span class="scard-badge official">⚔ Serveur Officiel</span>
@@ -324,13 +283,11 @@
                     </div>
                     <span class="players-count-text">— / 127</span>
                   </div>
-                  <button class="scard-join-btn primary" onclick="launchGame()"
+                  <button class="scard-join-btn primary" id="btn-join-main"
                           aria-label="Rejoindre le Royaume de Valdris">Rejoindre</button>
                 </div>
               </div>
             </div>
-
-            <!-- Serveur local dev -->
             <div class="scard">
               <div class="scard-banner">
                 <span class="scard-badge dev">⚙ Développement</span>
@@ -351,14 +308,11 @@
                     </div>
                     <span class="players-count-text">1 / 8</span>
                   </div>
-                  <button class="scard-join-btn secondary"
-                          onclick="launchGame({ip:'127.0.0.1',port:30120})"
+                  <button class="scard-join-btn secondary" id="btn-join-local"
                           aria-label="Rejoindre le serveur local">Se connecter</button>
                 </div>
               </div>
             </div>
-
-            <!-- Serveur communautaire hors ligne -->
             <div class="scard offline">
               <div class="scard-banner">
                 <span class="scard-badge local">🏹 Communauté</span>
@@ -379,8 +333,7 @@
                     </div>
                     <span class="players-count-text">0 / 64</span>
                   </div>
-                  <button class="scard-join-btn disabled" disabled
-                          aria-disabled="true">Indisponible</button>
+                  <button class="scard-join-btn disabled" disabled aria-disabled="true">Indisponible</button>
                 </div>
               </div>
             </div>
@@ -447,8 +400,7 @@
                 </div>
                 <div class="set-control">
                   <div class="path-display" id="fivem-path-display" aria-label="Chemin FiveM actuel">Détection en cours…</div>
-                  <button class="set-btn" id="btn-browse-fivem"
-                          aria-label="Parcourir pour sélectionner FiveM.exe">Parcourir</button>
+                  <button class="set-btn" id="btn-browse-fivem" aria-label="Parcourir pour sélectionner FiveM.exe">Parcourir</button>
                 </div>
               </div>
             </div>
@@ -500,8 +452,7 @@
                 <div class="set-control">
                   <input id="setting-volume" type="range" class="set-slider"
                          min="0" max="100" value="65"
-                         aria-label="Volume de la musique"
-                         oninput="this.style.setProperty('--pct',this.value+'%');document.getElementById('setting-volume-val').textContent=this.value+'%'" />
+                         aria-label="Volume de la musique" />
                   <span id="setting-volume-val" class="slider-val" aria-live="polite">65%</span>
                 </div>
               </div>
@@ -549,8 +500,7 @@
     <div class="console-panel">
       <div class="console-hd">
         <span class="console-title">Journal du Serveur</span>
-        <button class="console-close-btn" onclick="closeConsole()"
-                aria-label="Fermer la console">✕</button>
+        <button class="console-close-btn" id="btn-close-console" aria-label="Fermer la console">✕</button>
       </div>
       <div class="console-body" id="console-body" role="log" aria-live="polite">
         <div class="clog info">
