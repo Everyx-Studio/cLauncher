@@ -45,7 +45,7 @@
 ## Installation
 
 ```bash
-git clone https://github.com/VOTRE_USERNAME/medieval-rp-launcher.git
+git clone https://github.com/Everyx-Studio/cLauncher.git
 cd medieval-rp-launcher
 npm install
 npm run dev
