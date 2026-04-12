@@ -7,7 +7,7 @@
 ╚██╗ ██╔╝██╔══██║██║      ██║  ██║██╔══██╗██║╚════██║
  ╚████╔╝ ██║  ██║███████╗ ██████╔╝██║  ██║██║███████║
   ╚═══╝  ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝╚══════╝
-         ROYAUME DE VALDRIS — LAUNCHER v2.1
+         ROYAUME DE VALDRIS — LAUNCHER v1.0
 ```
 
 ![Electron](https://img.shields.io/badge/Electron-28-47848F?logo=electron&logoColor=white)
@@ -45,7 +45,7 @@
 ## Installation
 
 ```bash
-git clone https://github.com/VOTRE_USERNAME/medieval-rp-launcher.git
+git clone https://github.com/Everyx-Studio/cLauncher.git
 cd medieval-rp-launcher
 npm install
 npm run dev
@@ -227,7 +227,7 @@ cp icon.png assets/icon.png
 
 ## Changelog
 
-### v2.1.0
+### v1.0
 - **Fix critique** : `preload.mjs` exposait `window.launcherAPI` mais tout le code appelait `window.launcher` — corrigé, l'API est maintenant unifiée sous `window.launcher`
 - **Fix critique** : window controls (minimize/maximize/close) étaient des appels dans le vide — handlers IPC ajoutés dans `main.mjs`
 - Lancement FiveM réel via `spawn` + fallback URI scheme `fivem://connect/`
