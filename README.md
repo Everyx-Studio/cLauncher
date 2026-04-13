@@ -14,7 +14,7 @@
 ![Node](https://img.shields.io/badge/Node-20+-339933?logo=node.js&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-gold)
-![Build](https://img.shields.io/github/actions/workflow/status/VOTRE_USERNAME/medieval-rp-launcher/build.yml?label=build)
+![Build](https://img.shields.io/github/actions/workflow/status/cp12r/medieval-rp-launcher/build.yml?label=build)
 
 **Launcher desktop pour serveur FiveM médiéval RP.**  
 Écran de chargement animé, navigation par onglets, lancement FiveM réel via URI scheme officiel, config persistante, ping serveur en temps réel.
