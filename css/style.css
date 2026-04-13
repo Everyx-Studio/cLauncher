@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   ROYAUME DE VALDRIS  ·  LAUNCHER STYLESHEET  ·  v2.2
+   ROYAUME DE VALDRIS  ·  LAUNCHER STYLESHEET  · 
    Direction artistique : Dark Medieval Fantasy — The Witcher / Dark Souls / Elden Ring
    ─────────────────────────────────────────────────────────────────────────────
-   Changelog v2.2 :
+   Changelog :
    - Ajout .loader-screen (conteneur du loader manquant — bug critique)
    - Ajout .notif.fade-out (utilisé par le renderer pour congédier les notifs)
    - Ajout .clog-ts (horodatage console — retiré de l'inline HTML)
@@ -128,248 +128,6 @@
    § 4 · LOADER (écran de chargement immersif)
    ═══════════════════════════════════════════════════════ */
 
-/*
-  BUG CORRIGÉ v2.2 :
-  .loader-screen était complètement absent du fichier original.
-  Le conteneur #loader n'avait donc aucun positionnement ni centrage —
-  les éléments internes flottaient en haut à gauche sans mise en page.
-*/
-.loader-screen {
-  position: fixed; inset: 0; z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background:
-    radial-gradient(ellipse 60% 50% at 50% 40%, rgba(30,20,8,0.6) 0%, transparent 70%),
-    var(--obsidian);
-  transition: opacity 0.6s var(--ease-out);
-}
-
-.loader-screen.hidden {
-  opacity: 0;
-  pointer-events: none;
-  /* On laisse display:none géré par le renderer après la transition */
-}
-
-.loader-title {
-  font-family: 'Cinzel Decorative', Georgia, serif;
-  font-size: 28px; font-weight: 900;
-  color: var(--gold-light);
-  letter-spacing: 0.18em;
-  text-align: center;
-  text-shadow:
-    0 0 40px rgba(201,168,76,0.35),
-    0 2px 8px rgba(0,0,0,0.9);
-  margin-bottom: 6px;
-  animation: loaderTextIn 1.4s 0.3s var(--ease-out) both;
-}
-
-.loader-subtitle {
-  font-family: 'EB Garamond', Georgia, serif;
-  font-style: italic;
-  font-size: 13px;
-  color: var(--ash);
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  text-align: center;
-  margin-bottom: 52px;
-  animation: loaderTextIn 1.4s 0.5s var(--ease-out) both;
-}
-
-@keyframes loaderTextIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.loader-progress-wrap {
-  width: 360px;
-  animation: loaderTextIn 1s 0.8s var(--ease-out) both;
-}
-
-.loader-status {
-  font-family: 'Cinzel', Georgia, serif;
-  font-size: 9px; font-weight: 500;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--ash-dark);
-  text-align: center;
-  margin-bottom: 14px;
-  min-height: 16px;
-  transition: opacity 0.3s;
-}
-
-.loader-track {
-  width: 100%; height: 6px;
-  position: relative;
-  background: rgba(0,0,0,0.5);
-  border: 1px solid rgba(201,168,76,0.12);
-  box-shadow:
-    inset 0 1px 4px rgba(0,0,0,0.8),
-    inset 0 0 0 1px rgba(0,0,0,0.4);
-}
-
-/* Encoches décoratives */
-.loader-track::before {
-  content: '';
-  position: absolute; inset: 0;
-  background-image: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent 35px,
-    rgba(0,0,0,0.4) 35px,
-    rgba(0,0,0,0.4) 36px
-  );
-  z-index: 2;
-  pointer-events: none;
-}
-
-.loader-fill {
-  height: 100%;
-  width: 0%;
-  position: relative;
-  background: linear-gradient(90deg,
-    var(--gold-deep)   0%,
-    var(--gold-dark)  30%,
-    var(--gold)       65%,
-    var(--gold-bright) 80%,
-    var(--gold)       100%);
-  background-size: 200% 100%;
-  animation: fillShimmer 2.5s ease-in-out infinite;
-  transition: width 0.6s var(--ease-out);
-}
-
-@keyframes fillShimmer {
-  0%   { background-position: 200% center; }
-  100% { background-position: -200% center; }
-}
-
-/* Orbe lumineux au bout de la barre */
-.loader-fill::after {
-  content: '';
-  position: absolute;
-  right: -1px; top: 50%;
-  transform: translateY(-50%);
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: var(--gold-bright);
-  box-shadow:
-    0 0 6px 2px rgba(201,168,76,0.8),
-    0 0 16px 4px rgba(201,168,76,0.4);
-}
-
-.loader-ornament {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-top: 8px;
-}
-
-.loader-pct {
-  font-family: 'Cinzel', Georgia, serif;
-  font-size: 9px;
-  color: var(--gold-dark);
-  letter-spacing: 0.1em;
-}
-
-.loader-version {
-  font-family: 'EB Garamond', Georgia, serif;
-  font-style: italic;
-  font-size: 11px;
-  color: var(--ash-deep);
-}
-
-/* Particules flottantes */
-.loader-particles {
-  position: absolute; inset: 0;
-  overflow: hidden; pointer-events: none;
-}
-
-.loader-particle {
-  position: absolute;
-  bottom: -10px;
-  width: 3px; height: 3px;
-  border-radius: 50%;
-  background: var(--gold);
-  animation: particleRise var(--dur, 6s) var(--delay, 0s) ease-in infinite;
-  opacity: 0;
-}
-.loader-particle:nth-child(1)  { left: 12%;  --dur: 7s;   --delay: 0s;    width: 2px; height: 2px; }
-.loader-particle:nth-child(2)  { left: 24%;  --dur: 5.5s; --delay: 1.2s;  background: var(--blood-light); }
-.loader-particle:nth-child(3)  { left: 38%;  --dur: 6.8s; --delay: 0.4s;  width: 2px; height: 2px; }
-.loader-particle:nth-child(4)  { left: 50%;  --dur: 5s;   --delay: 2s;    background: var(--ember); }
-.loader-particle:nth-child(5)  { left: 63%;  --dur: 7.2s; --delay: 0.8s;  width: 2px; height: 2px; }
-.loader-particle:nth-child(6)  { left: 78%;  --dur: 6.2s; --delay: 1.6s;  background: var(--fire-tip); }
-.loader-particle:nth-child(7)  { left: 88%;  --dur: 5.8s; --delay: 3s;    width: 2px; height: 2px; }
-
-@keyframes particleRise {
-  0%   { transform: translateY(0) scale(1);    opacity: 0; }
-  10%  { opacity: 0.7; }
-  80%  { opacity: 0.2; }
-  100% { transform: translateY(-70vh) scale(0.3) rotate(45deg); opacity: 0; }
-}
-
-/* — Emblème central du loader — */
-.loader-emblem {
-  position: relative;
-  width: 120px; height: 120px;
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 32px;
-}
-
-.loader-ring-outer {
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  border: 1px solid rgba(201,168,76,0.22);
-  animation: loaderRingOuter 12s linear infinite;
-}
-.loader-ring-outer::before {
-  content: '◆';
-  position: absolute;
-  top: -6px; left: 50%; transform: translateX(-50%);
-  font-size: 8px; color: var(--gold-dark);
-}
-@keyframes loaderRingOuter { to { transform: rotate(360deg); } }
-
-.loader-ring-inner {
-  position: absolute;
-  inset: 12px;
-  border-radius: 50%;
-  border: 1px solid rgba(201,168,76,0.12);
-  animation: loaderRingInner 8s linear infinite reverse;
-}
-@keyframes loaderRingInner { to { transform: rotate(360deg); } }
-
-.loader-ring-marks {
-  position: absolute; inset: 6px;
-  border-radius: 50%;
-  background: repeating-conic-gradient(
-    rgba(201,168,76,0.06) 0deg,
-    rgba(201,168,76,0.06) 2deg,
-    transparent 2deg,
-    transparent 90deg
-  );
-  animation: loaderRingOuter 20s linear infinite reverse;
-}
-
-.loader-shield {
-  position: relative; z-index: 2;
-  width: 60px; height: 70px;
-  display: flex; align-items: flex-start; justify-content: center;
-  padding-top: 10px;
-  clip-path: polygon(0% 0%, 100% 0%, 100% 66%, 50% 100%, 0% 66%);
-  background: linear-gradient(150deg, var(--blood-dark) 0%, var(--blood) 50%, rgba(100,22,22,0.95) 100%);
-  border: 1px solid rgba(201,168,76,0.2);
-  box-shadow: 0 4px 20px rgba(122,26,26,0.5);
-}
-
-.loader-crest {
-  font-size: 24px;
-  filter: drop-shadow(0 0 10px rgba(201,168,76,0.8));
-  animation: loaderCrestPulse 3s ease-in-out infinite;
-}
-@keyframes loaderCrestPulse {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(201,168,76,0.5)); }
-  50%       { filter: drop-shadow(0 0 20px rgba(201,168,76,1)); }
-}
 
 
 /* ═══════════════════════════════════════════════════════
@@ -774,12 +532,7 @@
   60%       { box-shadow: 0 0 0 5px rgba(76,175,80,0); }
 }
 
-/*
-  BUG CORRIGÉ v2.2 :
-  .status-text utilisait color: #6FCF70 en dur (valeur online seulement).
-  En état offline le texte restait vert. On utilise maintenant var(--online) /
-  une surcharge explicite pour l'état offline.
-*/
+
 .status-text {
   font-family: 'Cinzel', Georgia, serif;
   font-size: 8px; font-weight: 600;
@@ -797,12 +550,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* — Liens sidebar —
-  BUG CORRIGÉ v2.2 : cursor:pointer absent sur .slink.
-  Les <a role="button"> n'héritent pas du cursor:pointer du reset button
-  car ce sont des balises <a>, pas des <button>. Le reset a { } dans rules.css
-  ne force pas le curseur. Résultat : curseur texte au hover.
-*/
+
 .sidebar-nav {
   display: flex; flex-direction: column; gap: 2px;
   flex-shrink: 0;
@@ -815,7 +563,7 @@
   color: var(--parchment-dim);
   transition: color var(--t-mid) var(--ease-out);
   overflow: hidden;
-  cursor: pointer; /* FIX v2.2 */
+  cursor: pointer;
 }
 
 .slink::before {
@@ -1503,11 +1251,7 @@
   transition: color var(--t-mid);
 }
 
-/*
-  BUG CORRIGÉ v2.2 :
-  cursor:pointer absent sur .scard-join-btn — clip-path supprime le curseur natif
-  des buttons sur certaines versions de Chromium (Electron). Ajouté explicitement.
-*/
+
 .scard-join-btn {
   padding: 9px 24px;
   font-family: 'Cinzel', Georgia, serif;
@@ -1516,7 +1260,7 @@
   text-transform: uppercase;
   clip-path: polygon(7px 0%, 100% 0%, calc(100% - 7px) 100%, 0% 100%);
   transition: all var(--t-mid) var(--ease-out);
-  cursor: pointer; /* FIX v2.2 */
+  cursor: pointer; 
 }
 
 .scard-join-btn.primary {
@@ -1630,7 +1374,7 @@
 
 
 /* ═══════════════════════════════════════════════════════
-   § 12 · PAGE PROFIL (réservé — non implémenté dans la v2.2)
+   § 12 · PAGE PROFIL 
    ═══════════════════════════════════════════════════════ */
 .profile-body {
   flex: 1;
@@ -2054,11 +1798,7 @@
   margin-right: 6px;
 }
 
-/*
-  AJOUTÉ v2.2 :
-  .clog-ts — horodatage des lignes de console.
-  Retiré de l'inline <style> dans index.html.
-*/
+
 .clog-ts {
   color: var(--ash-deep);
   font-size: 10px;
@@ -2207,11 +1947,7 @@
   to   { opacity: 1; transform: translateX(0) scale(1); }
 }
 
-/*
-  AJOUTÉ v2.2 :
-  .notif.fade-out — classe ajoutée par le renderer après 4s pour congédier
-  la notification. Sans cette règle, l'élément disparaissait brusquement.
-*/
+
 .notif.fade-out {
   animation: notifOut 0.5s var(--ease-in-out) forwards;
 }
@@ -2356,4 +2092,392 @@
   border-color: var(--gold-border-hot);
   color: var(--gold);
   background: var(--gold-faint);
+}
+
+
+/* ═════════════════════════════════════════════════════════════
+   § 19 · AMÉLIORATIONS 
+   ═════════════════════════════════════════════════════════════ */
+
+.wm-btn.is-maximized {
+  color: var(--gold);
+}
+
+.hero-live-panel {
+  max-width: 560px;
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1px solid rgba(201,168,76,0.16);
+  background: linear-gradient(165deg, rgba(0,0,0,0.42) 0%, rgba(18,12,9,0.28) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.02),
+    0 12px 32px rgba(0,0,0,0.24);
+  backdrop-filter: blur(8px);
+}
+
+.hero-live-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.hero-status-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hero-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--offline);
+  flex-shrink: 0;
+}
+
+.hero-status-dot.online {
+  background: var(--online);
+  animation: statusPulse 2.2s ease-in-out infinite;
+}
+
+.hero-status-text {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+
+.hero-status-text.online {
+  color: var(--gold-light);
+}
+
+.hero-copy-btn {
+  padding: 6px 14px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--gold-border);
+  color: var(--ash);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: all var(--t-mid) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.hero-copy-btn:hover {
+  color: var(--gold);
+  border-color: var(--gold-border-hot);
+  background: rgba(201,168,76,0.08);
+}
+
+.hero-live-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.hero-live-stat {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(201,168,76,0.08);
+  background: rgba(0,0,0,0.24);
+}
+
+.hero-live-label {
+  display: block;
+  margin-bottom: 4px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ash-dark);
+}
+
+.hero-live-value {
+  display: block;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 14px;
+  color: var(--parchment-warm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scard-status.neutral {
+  color: var(--gold-dark);
+  background: rgba(201,168,76,0.08);
+  border: 1px solid rgba(201,168,76,0.2);
+}
+
+#server-card-main.live-online {
+  border-color: rgba(76,175,80,0.24);
+  box-shadow:
+    0 4px 30px rgba(0,0,0,0.46),
+    inset 0 0 40px rgba(76,175,80,0.02);
+}
+
+#server-card-main.live-offline {
+  border-color: rgba(122,26,26,0.28);
+}
+
+.scard-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-bottom: 12px;
+}
+
+.scard-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 110px;
+}
+
+.scard-meta-label {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ash-dark);
+}
+
+.scard-meta-value {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 13px;
+  color: var(--parchment-warm);
+}
+
+.scard.is-hidden-filter {
+  display: none;
+}
+
+.server-insights {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.insight-card {
+  border: 1px solid var(--gold-border);
+  background: linear-gradient(160deg, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0.22) 100%);
+  padding: 18px 20px 20px;
+}
+
+.insight-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.insight-title {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--gold-light);
+  margin-bottom: 4px;
+}
+
+.insight-subtitle {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ash-dark);
+}
+
+.insight-refresh {
+  padding: 7px 16px;
+  background: rgba(0,0,0,0.34);
+  border: 1px solid var(--gold-border);
+  color: var(--gold-dark);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: all var(--t-mid) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.insight-refresh:hover {
+  background: rgba(201,168,76,0.08);
+  border-color: var(--gold-border-hot);
+  color: var(--gold);
+}
+
+.insight-refresh.loading {
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.roster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 14px;
+  background: rgba(0,0,0,0.28);
+  border: 1px solid rgba(201,168,76,0.08);
+}
+
+.player-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--blood-dark), var(--blood));
+  border: 1px solid rgba(201,168,76,0.24);
+  color: var(--gold);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.player-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.player-name {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--parchment-warm);
+}
+
+.player-meta {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ash-dark);
+}
+
+.player-empty,
+.server-empty-state {
+  padding: 16px 18px;
+  border: 1px dashed rgba(201,168,76,0.16);
+  background: rgba(0,0,0,0.18);
+  color: var(--ash);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.player-empty {
+  grid-column: 1 / -1;
+}
+
+.set-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.set-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ash);
+  background: rgba(0,0,0,0.28);
+}
+
+.set-status-badge.online {
+  color: #6FCF70;
+  border-color: rgba(76,175,80,0.24);
+  background: rgba(76,175,80,0.08);
+}
+
+.set-status-badge.offline {
+  color: #E87070;
+  border-color: rgba(200,80,80,0.22);
+  background: rgba(122,26,26,0.12);
+}
+
+.set-status-badge.sync {
+  color: var(--gold);
+  border-color: rgba(201,168,76,0.22);
+  background: rgba(201,168,76,0.08);
+}
+
+@media (max-width: 1320px) {
+  .hero-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero-cta {
+    align-items: flex-start;
+  }
+
+  .scard-body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .scard-right {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .players-display {
+    width: 100%;
+  }
+
+  .players-bar-wrap {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .set-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .set-control {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .path-display {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

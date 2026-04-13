@@ -1,103 +1,237 @@
 .loader-screen {
-  position: fixed; inset: 0; z-index: 9999;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   background:
-    radial-gradient(ellipse 60% 50% at 50% 55%, rgba(70,20,20,0.20) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(201,168,76,0.04) 0%, transparent 60%),
-    linear-gradient(170deg, #060403 0%, #0E0A06 40%, #08060A 100%);
-  transition: opacity 0.8s var(--ease-out), visibility 0.8s;
+    radial-gradient(ellipse 60% 50% at 50% 40%, rgba(30,20,8,0.6) 0%, transparent 70%),
+    var(--obsidian);
+  transition: opacity 0.6s var(--ease-out);
 }
 
-.loader-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.loader-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+  /* On laisse display:none géré par le renderer après la transition */
+}
 
-/* Emblème central */
+.loader-title {
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-size: 28px; font-weight: 900;
+  color: var(--gold-light);
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-shadow:
+    0 0 40px rgba(201,168,76,0.35),
+    0 2px 8px rgba(0,0,0,0.9);
+  margin-bottom: 6px;
+  animation: loaderTextIn 1.4s 0.3s var(--ease-out) both;
+}
+
+.loader-subtitle {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ash);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 52px;
+  animation: loaderTextIn 1.4s 0.5s var(--ease-out) both;
+}
+
+@keyframes loaderTextIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.loader-progress-wrap {
+  width: 360px;
+  animation: loaderTextIn 1s 0.8s var(--ease-out) both;
+}
+
+.loader-status {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 9px; font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ash-dark);
+  text-align: center;
+  margin-bottom: 14px;
+  min-height: 16px;
+  transition: opacity 0.3s;
+}
+
+.loader-track {
+  width: 100%; height: 6px;
+  position: relative;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(201,168,76,0.12);
+  box-shadow:
+    inset 0 1px 4px rgba(0,0,0,0.8),
+    inset 0 0 0 1px rgba(0,0,0,0.4);
+}
+
+/* Encoches décoratives */
+.loader-track::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 35px,
+    rgba(0,0,0,0.4) 35px,
+    rgba(0,0,0,0.4) 36px
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+
+.loader-fill {
+  height: 100%;
+  width: 0%;
+  position: relative;
+  background: linear-gradient(90deg,
+    var(--gold-deep)   0%,
+    var(--gold-dark)  30%,
+    var(--gold)       65%,
+    var(--gold-bright) 80%,
+    var(--gold)       100%);
+  background-size: 200% 100%;
+  animation: fillShimmer 2.5s ease-in-out infinite;
+  transition: width 0.6s var(--ease-out);
+}
+
+@keyframes fillShimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+/* Orbe lumineux au bout de la barre */
+.loader-fill::after {
+  content: '';
+  position: absolute;
+  right: -1px; top: 50%;
+  transform: translateY(-50%);
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  box-shadow:
+    0 0 6px 2px rgba(201,168,76,0.8),
+    0 0 16px 4px rgba(201,168,76,0.4);
+}
+
+.loader-ornament {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 8px;
+}
+
+.loader-pct {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 9px;
+  color: var(--gold-dark);
+  letter-spacing: 0.1em;
+}
+
+.loader-version {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 11px;
+  color: var(--ash-deep);
+}
+
+/* Particules flottantes */
+.loader-particles {
+  position: absolute; inset: 0;
+  overflow: hidden; pointer-events: none;
+}
+
+.loader-particle {
+  position: absolute;
+  bottom: -10px;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: particleRise var(--dur, 6s) var(--delay, 0s) ease-in infinite;
+  opacity: 0;
+}
+.loader-particle:nth-child(1)  { left: 12%;  --dur: 7s;   --delay: 0s;    width: 2px; height: 2px; }
+.loader-particle:nth-child(2)  { left: 24%;  --dur: 5.5s; --delay: 1.2s;  background: var(--blood-light); }
+.loader-particle:nth-child(3)  { left: 38%;  --dur: 6.8s; --delay: 0.4s;  width: 2px; height: 2px; }
+.loader-particle:nth-child(4)  { left: 50%;  --dur: 5s;   --delay: 2s;    background: var(--ember); }
+.loader-particle:nth-child(5)  { left: 63%;  --dur: 7.2s; --delay: 0.8s;  width: 2px; height: 2px; }
+.loader-particle:nth-child(6)  { left: 78%;  --dur: 6.2s; --delay: 1.6s;  background: var(--fire-tip); }
+.loader-particle:nth-child(7)  { left: 88%;  --dur: 5.8s; --delay: 3s;    width: 2px; height: 2px; }
+
+@keyframes particleRise {
+  0%   { transform: translateY(0) scale(1);    opacity: 0; }
+  10%  { opacity: 0.7; }
+  80%  { opacity: 0.2; }
+  100% { transform: translateY(-70vh) scale(0.3) rotate(45deg); opacity: 0; }
+}
+
+/* — Emblème central du loader — */
 .loader-emblem {
   position: relative;
-  margin-bottom: 52px;
-  animation: loaderEmblemIn 1.2s var(--ease-out) both;
+  width: 120px; height: 120px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 32px;
 }
 
-@keyframes loaderEmblemIn {
-  from { opacity: 0; transform: scale(0.7) translateY(20px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-/* Cercle extérieur tournant */
 .loader-ring-outer {
-  position: absolute;
-  inset: -32px;
+  position: absolute; inset: 0;
   border-radius: 50%;
-  border: 1px solid transparent;
-  border-top-color: rgba(201,168,76,0.4);
-  border-right-color: rgba(201,168,76,0.15);
-  animation: ringRotate 8s linear infinite;
+  border: 1px solid rgba(201,168,76,0.22);
+  animation: loaderRingOuter 12s linear infinite;
 }
+.loader-ring-outer::before {
+  content: '◆';
+  position: absolute;
+  top: -6px; left: 50%; transform: translateX(-50%);
+  font-size: 8px; color: var(--gold-dark);
+}
+@keyframes loaderRingOuter { to { transform: rotate(360deg); } }
 
-/* Cercle intérieur tournant inverse */
 .loader-ring-inner {
   position: absolute;
-  inset: -16px;
+  inset: 12px;
   border-radius: 50%;
-  border: 1px solid transparent;
-  border-bottom-color: rgba(122,26,26,0.5);
-  border-left-color: rgba(122,26,26,0.2);
-  animation: ringRotate 5s linear infinite reverse;
+  border: 1px solid rgba(201,168,76,0.12);
+  animation: loaderRingInner 8s linear infinite reverse;
 }
+@keyframes loaderRingInner { to { transform: rotate(360deg); } }
 
-@keyframes ringRotate { to { transform: rotate(360deg); } }
-
-/* 8 marqueurs sur le cercle */
 .loader-ring-marks {
-  position: absolute;
-  inset: -32px;
+  position: absolute; inset: 6px;
   border-radius: 50%;
-  animation: ringRotate 8s linear infinite;
+  background: repeating-conic-gradient(
+    rgba(201,168,76,0.06) 0deg,
+    rgba(201,168,76,0.06) 2deg,
+    transparent 2deg,
+    transparent 90deg
+  );
+  animation: loaderRingOuter 20s linear infinite reverse;
 }
 
-.loader-ring-marks::before,
-.loader-ring-marks::after {
-  content: '';
-  position: absolute;
-  width: 5px; height: 5px;
-  background: var(--gold-dark);
-  border-radius: 50%;
-  top: 50%; left: 50%;
-  transform-origin: 0 0;
-}
-.loader-ring-marks::before { transform: translate(-50%,-50%) rotate(0deg)   translateY(-calc(50% + 32px)); }
-.loader-ring-marks::after  { transform: translate(-50%,-50%) rotate(180deg) translateY(-calc(50% + 32px)); }
-
-/* Bouclier central */
 .loader-shield {
-  width: 88px; height: 100px;
-  clip-path: polygon(0% 0%, 100% 0%, 100% 65%, 50% 100%, 0% 65%);
-  background:
-    linear-gradient(160deg, var(--blood-dark) 0%, var(--blood) 50%, rgba(100,20,20,0.9) 100%);
-  display: flex; align-items: center; justify-content: center;
-  position: relative;
-  box-shadow:
-    0 0 30px rgba(122,26,26,0.4),
-    0 0 60px rgba(122,26,26,0.15),
-    inset 0 1px 0 rgba(255,255,255,0.06);
-}
-
-/* Bordure intérieure du bouclier */
-.loader-shield::after {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  clip-path: polygon(0% 0%, 100% 0%, 100% 65%, 50% 100%, 0% 65%);
-  border: 1px solid rgba(201,168,76,0.25);
+  position: relative; z-index: 2;
+  width: 60px; height: 70px;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 10px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 66%, 50% 100%, 0% 66%);
+  background: linear-gradient(150deg, var(--blood-dark) 0%, var(--blood) 50%, rgba(100,22,22,0.95) 100%);
+  border: 1px solid rgba(201,168,76,0.2);
+  box-shadow: 0 4px 20px rgba(122,26,26,0.5);
 }
 
 .loader-crest {
-  font-size: 34px;
-  filter: drop-shadow(0 0 8px rgba(201,168,76,0.6));
-  animation: crestPulse 3s ease-in-out infinite;
-  position: relative; z-index: 1;
+  font-size: 24px;
+  filter: drop-shadow(0 0 10px rgba(201,168,76,0.8));
+  animation: loaderCrestPulse 3s ease-in-out infinite;
 }
-@keyframes crestPulse {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(201,168,76,0.4)); }
-  50%       { filter: drop-shadow(0 0 16px rgba(201,168,76,0.8)); }
+@keyframes loaderCrestPulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(201,168,76,0.5)); }
+  50%       { filter: drop-shadow(0 0 20px rgba(201,168,76,1)); }
 }
+

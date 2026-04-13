@@ -15,14 +15,6 @@
   <link rel="stylesheet" href="./css/style.css" />
   <link rel="stylesheet" href="./css/rules.css" />
   <link rel="stylesheet" href="./css/loader.css" />
-  <style>
-    .clog-ts {
-      color: var(--ash-dark);
-      font-size: 11px;
-      margin-right: 6px;
-      font-variant-numeric: tabular-nums;
-    }
-  </style>
 </head>
 <body>
   <div class="atmo-base"></div>
@@ -205,6 +197,36 @@
                 <span class="hero-season-tag">— Saison IV · L'Ère des Ténèbres —</span>
                 <h1 class="hero-title">LE ROYAUME<br>VOUS ATTEND</h1>
                 <p class="hero-desc">Forgez votre légende dans les cendres de la guerre</p>
+                <div class="hero-live-panel" aria-label="Aperçu live du serveur">
+                  <div class="hero-live-top">
+                    <div class="hero-status-line">
+                      <span class="hero-status-dot" id="hero-status-dot" aria-hidden="true"></span>
+                      <span class="hero-status-text" id="hero-status-text">Synchronisation du royaume…</span>
+                    </div>
+                    <button class="hero-copy-btn" id="btn-copy-connect" type="button"
+                            aria-label="Copier l'adresse du serveur">
+                      Copier l'adresse
+                    </button>
+                  </div>
+                  <div class="hero-live-grid">
+                    <div class="hero-live-stat">
+                      <span class="hero-live-label">Adresse</span>
+                      <strong class="hero-live-value" id="home-server-address">127.0.0.1:30120</strong>
+                    </div>
+                    <div class="hero-live-stat">
+                      <span class="hero-live-label">Population</span>
+                      <strong class="hero-live-value" id="home-server-players">— / 127</strong>
+                    </div>
+                    <div class="hero-live-stat">
+                      <span class="hero-live-label">Monde</span>
+                      <strong class="hero-live-value" id="home-server-map">Valdris</strong>
+                    </div>
+                    <div class="hero-live-stat">
+                      <span class="hero-live-label">Mode</span>
+                      <strong class="hero-live-value" id="home-server-mode">Medieval RP</strong>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="hero-cta">
                 <button class="play-btn" id="play-btn" aria-label="Lancer FiveM et rejoindre le serveur">
@@ -219,7 +241,7 @@
           <div class="activity-strip" aria-label="Activité récente">
             <span class="activity-label">Activité récente</span>
             <div class="activity-divider" aria-hidden="true"></div>
-            <div class="activity-items">
+            <div class="activity-items" id="activity-items">
               <div class="act-item">
                 <span class="act-dot green" aria-hidden="true"></span>
                 <span class="act-text"><strong>Aldric le Rouge</strong> vient de rejoindre</span>
@@ -248,27 +270,46 @@
             </div>
             <div class="page-controls">
               <div class="search-wrap">
-                <input class="search-input" type="search" placeholder="Rechercher un royaume…"
+                <input class="search-input" id="server-search" type="search" placeholder="Rechercher un royaume…"
                        aria-label="Rechercher un serveur" />
               </div>
-              <select class="filter-select" aria-label="Filtrer par type">
-                <option>Tous</option><option>En ligne</option><option>RP</option><option>PVP</option>
+              <select class="filter-select" id="server-filter" aria-label="Filtrer par type">
+                <option value="all">Tous</option>
+                <option value="online">En ligne</option>
+                <option value="rp">RP</option>
+                <option value="pvp">PVP</option>
+                <option value="dev">Dev</option>
               </select>
             </div>
           </div>
           <div class="servers-body">
-            <div class="scard featured">
+            <div class="scard featured" id="server-card-main"
+                 data-server-card data-online="false" data-tags="official rp medieval pvp economy">
               <div class="scard-banner">
                 <span class="scard-badge official">⚔ Serveur Officiel</span>
-                <div class="scard-status online">
+                <div class="scard-status offline-status" id="scard-main-status">
                   <span class="scard-status-dot" aria-hidden="true"></span>
                   <span id="scard-main-ping" aria-label="Ping du serveur principal">—</span>
                 </div>
               </div>
               <div class="scard-body">
                 <div class="scard-info">
-                  <div class="scard-name">🏰 Royaume de Valdris</div>
-                  <div class="scard-desc">Serveur RP médiéval principal — Guildes, politique, sièges de châteaux</div>
+                  <div class="scard-name" id="server-main-name">🏰 Royaume de Valdris</div>
+                  <div class="scard-desc" id="server-main-desc">Serveur RP médiéval principal — Guildes, politique, sièges de châteaux</div>
+                  <div class="scard-meta-row">
+                    <span class="scard-meta">
+                      <span class="scard-meta-label">Adresse</span>
+                      <strong class="scard-meta-value" id="server-main-address">127.0.0.1:30120</strong>
+                    </span>
+                    <span class="scard-meta">
+                      <span class="scard-meta-label">Monde</span>
+                      <strong class="scard-meta-value" id="server-main-map">Valdris</strong>
+                    </span>
+                    <span class="scard-meta">
+                      <span class="scard-meta-label">Mode</span>
+                      <strong class="scard-meta-value" id="server-main-mode">Medieval RP</strong>
+                    </span>
+                  </div>
                   <div class="scard-tags">
                     <span class="stag rp">RP</span>
                     <span class="stag medieval">Médiéval</span>
@@ -279,41 +320,41 @@
                 <div class="scard-right">
                   <div class="players-display">
                     <div class="players-bar-wrap" aria-label="Occupation du serveur">
-                      <div class="players-bar-fill" style="width:0%"></div>
+                      <div class="players-bar-fill" id="server-main-players-bar" style="width:0%"></div>
                     </div>
-                    <span class="players-count-text">— / 127</span>
+                    <span class="players-count-text" id="server-main-players-count">— / 127</span>
                   </div>
-                  <button class="scard-join-btn primary" id="btn-join-main"
+                  <button class="scard-join-btn primary" id="btn-join-main" type="button"
                           aria-label="Rejoindre le Royaume de Valdris">Rejoindre</button>
                 </div>
               </div>
             </div>
-            <div class="scard">
+            <div class="scard" data-server-card data-online="false" data-tags="dev local preset medieval">
               <div class="scard-banner">
-                <span class="scard-badge dev">⚙ Développement</span>
-                <div class="scard-status online">
-                  <span class="scard-status-dot" aria-hidden="true"></span>&lt;1ms
+                <span class="scard-badge dev">⚙ Preset Local</span>
+                <div class="scard-status neutral">
+                  <span class="scard-status-dot" aria-hidden="true"></span>127.0.0.1
                 </div>
               </div>
               <div class="scard-body">
                 <div class="scard-info">
-                  <div class="scard-name">🔧 Serveur Local</div>
-                  <div class="scard-desc">Environnement de développement — Tests de scripts et ressources</div>
+                  <div class="scard-name">🔧 Connexion Locale</div>
+                  <div class="scard-desc">Préréglage rapide vers un serveur FiveM local sur 127.0.0.1:30120 pour les tests.</div>
                   <div class="scard-tags"><span class="stag dev">Dev</span><span class="stag medieval">Médiéval</span></div>
                 </div>
                 <div class="scard-right">
                   <div class="players-display">
                     <div class="players-bar-wrap">
-                      <div class="players-bar-fill" style="width:12%"></div>
+                      <div class="players-bar-fill" style="width:18%"></div>
                     </div>
-                    <span class="players-count-text">1 / 8</span>
+                    <span class="players-count-text">127.0.0.1:30120</span>
                   </div>
-                  <button class="scard-join-btn secondary" id="btn-join-local"
-                          aria-label="Rejoindre le serveur local">Se connecter</button>
+                  <button class="scard-join-btn secondary" id="btn-join-local" type="button"
+                          aria-label="Utiliser la connexion locale">Utiliser</button>
                 </div>
               </div>
             </div>
-            <div class="scard offline">
+            <div class="scard offline" data-server-card data-online="false" data-tags="offline pvp medieval community">
               <div class="scard-banner">
                 <span class="scard-badge local">🏹 Communauté</span>
                 <div class="scard-status offline-status">
@@ -335,6 +376,26 @@
                   </div>
                   <button class="scard-join-btn disabled" disabled aria-disabled="true">Indisponible</button>
                 </div>
+              </div>
+            </div>
+            <div class="server-insights">
+              <section class="insight-card" aria-label="Présence dans le royaume">
+                <div class="insight-head">
+                  <div>
+                    <h3 class="insight-title">Veilleurs du Royaume</h3>
+                    <span class="insight-subtitle" id="roster-summary">Surveillance du serveur en cours…</span>
+                  </div>
+                  <button class="insight-refresh" id="btn-refresh-server" type="button"
+                          aria-label="Actualiser les données du serveur">
+                    Actualiser
+                  </button>
+                </div>
+                <div class="roster-grid" id="player-roster">
+                  <div class="player-empty">La liste des joueurs apparaîtra ici dès que le serveur répondra.</div>
+                </div>
+              </section>
+              <div class="server-empty-state hidden" id="servers-empty">
+                Aucun royaume ne correspond à votre recherche.
               </div>
             </div>
           </div>
@@ -400,7 +461,14 @@
                 </div>
                 <div class="set-control">
                   <div class="path-display" id="fivem-path-display" aria-label="Chemin FiveM actuel">Détection en cours…</div>
-                  <button class="set-btn" id="btn-browse-fivem" aria-label="Parcourir pour sélectionner FiveM.exe">Parcourir</button>
+                  <button class="set-btn" id="btn-autodetect-fivem" type="button"
+                          aria-label="Détecter automatiquement FiveM.exe">
+                    Détecter
+                  </button>
+                  <button class="set-btn" id="btn-browse-fivem" type="button"
+                          aria-label="Parcourir pour sélectionner FiveM.exe">
+                    Parcourir
+                  </button>
                 </div>
               </div>
             </div>
@@ -427,6 +495,23 @@
                   <input id="setting-port" class="set-input" type="number"
                          value="30120" min="1" max="65535" style="width:120px;"
                          aria-label="Port du serveur" />
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-label">
+                  <span class="set-label-main">Diagnostic</span>
+                  <span class="set-label-sub">Teste le serveur configuré et copie l'adresse de connexion</span>
+                </div>
+                <div class="set-control set-actions">
+                  <span class="set-status-badge offline" id="setting-connection-status">Hors ligne</span>
+                  <button class="set-btn" id="btn-test-connection" type="button"
+                          aria-label="Tester la connexion au serveur">
+                    Tester
+                  </button>
+                  <button class="set-btn" id="btn-copy-address" type="button"
+                          aria-label="Copier l'adresse du serveur">
+                    Copier l'adresse
+                  </button>
                 </div>
               </div>
             </div>
@@ -468,7 +553,7 @@
       <span class="ticker-badge" aria-hidden="true">⚔ Décrets</span>
       <div class="ticker-divider" aria-hidden="true"></div>
       <div class="ticker-track">
-        <div class="ticker-inner">
+        <div class="ticker-inner" id="ticker-inner">
           <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Mise à jour 2.2</strong> — Infos serveur live disponibles</span>
           <span class="ticker-sep" aria-hidden="true">✦</span>
           <span class="ticker-item"><span class="tdot" aria-hidden="true"></span><strong>Tournoi Royal</strong> — Inscriptions jusqu'au 20 Avr.</span>

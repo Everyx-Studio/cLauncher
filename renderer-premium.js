@@ -1,163 +1,230 @@
-// renderer-premium.js — Logique UI · Royaume de Valdris Launcher v2.2
+// renderer-premium.js — Logique UI · Royaume de Valdris Launcher v2.3
 // Améliorations :
-//   - fetchServerInfo() : joueurs live, hostname, ping → sidebar + server cards
-//   - stat-online, players-bar-fill, scard-main-ping mis à jour dynamiquement
-//   - Liens sidebar ouvrent les URLs via window.launcher.openExternal
-//   - Logs console avec horodatage
-//   - patchSettingsDOM() supprimé (les IDs sont directement dans le HTML)
-//   - startLocalServer retourne { ok, error } — géré proprement
-//   - Version affichée depuis app.getVersion()
+//   - contrôles de fenêtre réellement branchés
+//   - aperçu live du serveur sur l'accueil
+//   - recherche/filtrage des royaumes
+//   - roster de joueurs en direct
+//   - notifications sûres (sans HTML injecté)
+//   - états de connexion plus clairs dans Forge
+//   - raccourcis clavier et rafraîchissement plus robustes
 
-// ─── ÉTAT GLOBAL ──────────────────────────────────────────────────────────────
-
-let CONFIG = {
-  fivemPath:    '',
-  serverIp:     '127.0.0.1',
-  serverPort:   30120,
+const DEFAULT_CONFIG = {
+  fivemPath: '',
+  serverIp: '127.0.0.1',
+  serverPort: 30120,
   musicEnabled: true,
-  musicVolume:  65,
+  musicVolume: 65,
 };
 
-// ─── LOADER ANIMÉ ──────────────────────────────────────────────────────────────
+const LOCAL_SERVER_PRESET = {
+  ip: '127.0.0.1',
+  port: 30120,
+};
+
+const REFRESH_INTERVAL_MS = 30_000;
+const NEWS_REFRESH_INTERVAL_MS = 60_000;
+const MAX_CONSOLE_LINES = 250;
 
 const LOADER_STEPS = [
-  { pct: 10,  msg: 'Invocation des runes…'            },
-  { pct: 25,  msg: 'Chargement des parchemins…'       },
-  { pct: 40,  msg: 'Forgeage des armures…'            },
-  { pct: 58,  msg: 'Convocation des guildes…'         },
-  { pct: 72,  msg: 'Ouverture des portes du château…' },
-  { pct: 88,  msg: 'Connexion au Royaume…'            },
-  { pct: 100, msg: 'Bienvenue, Seigneur.'             },
+  { pct: 10, msg: 'Invocation des runes…' },
+  { pct: 25, msg: 'Chargement des parchemins…' },
+  { pct: 40, msg: 'Forgeage des armures…' },
+  { pct: 58, msg: 'Convocation des guildes…' },
+  { pct: 72, msg: 'Ouverture des portes du château…' },
+  { pct: 88, msg: 'Connexion au Royaume…' },
+  { pct: 100, msg: 'Bienvenue, Seigneur.' },
 ];
 
-let stepIndex = 0;
+const FALLBACK_ACTIVITY = [
+  {
+    tone: 'green',
+    highlight: 'Royaume prêt',
+    suffix: ' à accueillir de nouveaux aventuriers',
+    time: 'En attente',
+  },
+  {
+    tone: 'gold',
+    highlight: 'Forge',
+    suffix: ' configuration du launcher disponible',
+    time: 'Conseillé',
+  },
+  {
+    tone: 'blood',
+    highlight: 'Console',
+    suffix: ' ouvre le journal complet avec Ctrl+Maj+C',
+    time: 'Astuce',
+  },
+];
 
-function runLoader() {
-  const fill   = document.getElementById('loader-fill');
-  const status = document.getElementById('loader-status');
-  const pctEl  = document.getElementById('loader-pct');
+const TICKER_FALLBACK = [
+  { strong: 'Mise à jour 2.3', body: 'expérience du launcher renforcée et plus fluide' },
+  { strong: 'Royaumes', body: 'recherche et filtrage désormais disponibles' },
+  { strong: 'Veilleurs', body: 'liste des joueurs affichée en direct quand le serveur répond' },
+];
 
-  const interval = setInterval(() => {
-    if (stepIndex >= LOADER_STEPS.length) {
-      clearInterval(interval);
-      setTimeout(() => {
-        document.getElementById('loader').classList.add('hidden');
-        document.getElementById('app').style.opacity = '1';
-      }, 600);
-      return;
-    }
-    const step = LOADER_STEPS[stepIndex];
-    if (fill)   fill.style.width   = step.pct + '%';
-    if (status) status.textContent = step.msg;
-    if (pctEl)  pctEl.textContent  = step.pct + '%';
-    stepIndex++;
-  }, 420);
+let CONFIG = { ...DEFAULT_CONFIG };
+let loaderStepIndex = 0;
+
+const STATE = {
+  currentPage: 'home',
+  isRefreshingServerInfo: false,
+  serverInfo: null,
+  lastServerStatus: null,
+  refreshTimerId: null,
+  newsTimerId: null,
+  consoleReturnFocus: null,
+};
+
+function byId(id) {
+  return document.getElementById(id);
 }
 
-// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function query(selector, root = document) {
+  return root.querySelector(selector);
+}
 
-document.querySelectorAll('.nav-tab[data-page]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const page = btn.dataset.page;
-    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.page').forEach(p  => p.classList.remove('active'));
-    btn.classList.add('active');
-    const target = document.getElementById('page-' + page);
-    if (target) target.classList.add('active');
+function queryAll(selector, root = document) {
+  return Array.from(root.querySelectorAll(selector));
+}
+
+function setText(target, text) {
+  const element = typeof target === 'string' ? byId(target) : target;
+  if (!element) return;
+  element.textContent = text;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function sanitizeHost(value) {
+  const host = String(value ?? '').trim();
+  if (!host) return '';
+  if (host === 'localhost') return host;
+  if (/^\[[0-9a-fA-F:]+\]$/.test(host)) return host;
+  return /^[a-zA-Z0-9.-]+$/.test(host) ? host : '';
+}
+
+function normalizePort(value, fallback = DEFAULT_CONFIG.serverPort) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 && parsed < 65536 ? parsed : fallback;
+}
+
+function normalizePositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function getConnection(overrides = {}) {
+  return {
+    ip: sanitizeHost(overrides.ip ?? CONFIG.serverIp) || DEFAULT_CONFIG.serverIp,
+    port: normalizePort(overrides.port ?? CONFIG.serverPort),
+    fivemPath: typeof overrides.fivemPath === 'string' ? overrides.fivemPath : (CONFIG.fivemPath || ''),
+  };
+}
+
+function formatTime(dateInput) {
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('fr-BE', {
+    hour: '2-digit',
+    minute: '2-digit',
   });
-});
+}
 
-// ─── LANCEMENT DU JEU ─────────────────────────────────────────────────────────
+function formatNewsDate(dateInput) {
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return '';
 
-async function launchGame(opts = {}) {
-  const btn = document.getElementById('play-btn');
-  if (!btn) return;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTarget = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((startOfTarget - startOfToday) / 86_400_000);
 
-  btn.classList.add('loading');
-  const label = btn.querySelector('.play-label');
-  if (label) label.textContent = 'CONNEXION…';
-
-  const ip   = CONFIG.serverIp   || '127.0.0.1';
-  const port = CONFIG.serverPort || 30120;
-
-  addConsoleLog('info', `Lancement FiveM → ${ip}:${port}`);
-
-  if (window.launcher) {
-    const launchOpts = { ip, port, fivemPath: CONFIG.fivemPath || '', ...opts };
-
-    try {
-      const result = await window.launcher.launchGame(launchOpts);
-
-      if (result.ok) {
-        const methodLabel = {
-          'uri-scheme':         'URI scheme fivem://',
-          'spawn-exe':          'exécutable direct',
-          'uri-fallback':       'URI (fallback)',
-          'uri-final-fallback': 'URI (fallback final)',
-        }[result.method] || result.method;
-
-        addConsoleLog('ok', `FiveM lancé via ${methodLabel}`);
-
-        if (result.warning) {
-          addConsoleLog('warn', result.warning);
-          showNotif('warning', '⚠ Avertissement', result.warning);
-        } else {
-          showNotif('success', '⚔ Lancement', `Connexion en cours vers ${ip}:${port}…`);
-        }
-      } else {
-        addConsoleLog('err', result.error);
-        showNotif('error', '✕ Échec du lancement', result.error);
-      }
-    } catch (err) {
-      addConsoleLog('err', `Exception : ${err.message}`);
-      showNotif('error', '✕ Erreur inattendue', err.message);
-    } finally {
-      btn.classList.remove('loading');
-      if (label) label.textContent = 'JOUER';
-    }
-  } else {
-    addConsoleLog('info', 'Mode navigateur — simulation uniquement');
-    showNotif('info', '📜 Simulation', 'FiveM ne peut pas être lancé hors Electron.');
-    setTimeout(() => {
-      btn.classList.remove('loading');
-      if (label) label.textContent = 'JOUER';
-      addConsoleLog('ok', 'Simulation terminée');
-    }, 2500);
+  if (diffDays === 0) return `Aujourd'hui · ${formatTime(date)}`;
+  if (diffDays === -1) return `Hier · ${formatTime(date)}`;
+  if (diffDays > -7 && diffDays < 7) {
+    const rel = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' });
+    return `${rel.format(diffDays, 'day')} · ${formatTime(date)}`;
   }
+
+  return `${date.toLocaleDateString('fr-BE', {
+    day: '2-digit',
+    month: 'short',
+  })} · ${formatTime(date)}`;
 }
 
-// ─── CONSOLE ──────────────────────────────────────────────────────────────────
-
-function openConsole() {
-  document.getElementById('console-overlay').classList.remove('hidden');
+function formatPing(ms) {
+  return Number.isFinite(ms) ? `${Math.round(ms)}ms` : '—';
 }
 
-function closeConsole() {
-  document.getElementById('console-overlay').classList.add('hidden');
+function formatAddress(connection) {
+  return `${connection.ip}:${connection.port}`;
 }
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeConsole();
-});
-
-document.getElementById('console-overlay').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeConsole();
-});
 
 function timestamp() {
-  const d = new Date();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  const ss = String(d.getSeconds()).padStart(2, '0');
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
   return `${hh}:${mm}:${ss}`;
 }
 
+function beginButtonLoading(button, loadingText) {
+  if (!button) return () => {};
+
+  const label = button.querySelector('.play-label');
+  const originalText = label ? label.textContent : button.textContent;
+  const originalDisabled = button.disabled;
+
+  button.classList.add('loading');
+  button.disabled = true;
+
+  if (label) label.textContent = loadingText;
+  else button.textContent = loadingText;
+
+  return () => {
+    button.classList.remove('loading');
+    button.disabled = originalDisabled;
+    if (label) label.textContent = originalText;
+    else button.textContent = originalText;
+  };
+}
+
+function persistConfig(fragment) {
+  if (!window.launcher?.setConfig) return Promise.resolve(true);
+  return window.launcher.setConfig(fragment).catch(() => false);
+}
+
+function saveField(key, value) {
+  CONFIG[key] = value;
+  return persistConfig({ [key]: value });
+}
+
+function updateConnectionDisplays(connection = getConnection()) {
+  const address = formatAddress(connection);
+
+  setText('home-server-address', address);
+  setText('server-main-address', address);
+
+  const pathDisplay = byId('fivem-path-display');
+  if (pathDisplay) pathDisplay.title = CONFIG.fivemPath || '';
+}
+
+function setConnectionStatusBadge(mode, text) {
+  const badge = byId('setting-connection-status');
+  if (!badge) return;
+
+  badge.className = `set-status-badge ${mode}`;
+  badge.textContent = text;
+}
+
 function addConsoleLog(type, text) {
-  const body = document.getElementById('console-body');
+  const body = byId('console-body');
   if (!body) return;
 
   const line = document.createElement('div');
-  line.className = 'clog ' + type;
+  line.className = `clog ${type}`;
 
   const ts = document.createElement('span');
   ts.className = 'clog-ts';
@@ -165,126 +232,773 @@ function addConsoleLog(type, text) {
 
   const prefix = document.createElement('span');
   prefix.className = 'clog-prefix';
-  const prefixMap = { ok: '[OK]', err: '[ERR]', info: '[SYS]', warn: '[AVERT]' };
-  prefix.textContent = prefixMap[type] || '[LOG]';
+  prefix.textContent = ({
+    ok: '[OK]',
+    err: '[ERR]',
+    info: '[SYS]',
+    warn: '[AVERT]',
+  })[type] || '[LOG]';
 
-  const cleanText = text.replace(/^\[(OK|ERR|SYS|AVERT|LOG|WLD|PLR)\]\s*/i, '');
+  const cleanText = String(text ?? '').replace(/^\[(OK|ERR|SYS|AVERT|LOG)\]\s*/i, '');
 
-  line.appendChild(ts);
-  line.appendChild(prefix);
-  line.appendChild(document.createTextNode(' ' + cleanText));
+  line.append(ts, prefix, document.createTextNode(` ${cleanText}`));
   body.appendChild(line);
+
+  while (body.children.length > MAX_CONSOLE_LINES) {
+    body.removeChild(body.firstElementChild);
+  }
+
   body.scrollTop = body.scrollHeight;
 }
 
-// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+function removeNotification(node) {
+  if (!node?.parentElement) return;
+  node.parentElement.removeChild(node);
+}
 
 function showNotif(type, title, body) {
-  const stack = document.getElementById('notif-stack');
+  const stack = byId('notif-stack');
   if (!stack) return;
 
-  const el = document.createElement('div');
-  el.className = `notif ${type}`;
-  el.innerHTML = `
-    <div class="notif-timer"></div>
-    <div class="notif-icon">${{ success: '⚔', error: '✕', warning: '⚠', info: '📜' }[type] || '📜'}</div>
-    <div class="notif-content">
-      <span class="notif-title">${title}</span>
-      <span class="notif-body">${body}</span>
-    </div>
-    <button class="notif-close" onclick="this.parentElement.remove()">✕</button>
-  `;
-  stack.appendChild(el);
-  setTimeout(() => el.classList.add('fade-out'), 4000);
-  setTimeout(() => el.remove(), 4500);
+  const notif = document.createElement('div');
+  notif.className = `notif ${type}`;
+
+  const timer = document.createElement('div');
+  timer.className = 'notif-timer';
+
+  const icon = document.createElement('div');
+  icon.className = 'notif-icon';
+  icon.textContent = ({
+    success: '⚔',
+    error: '✕',
+    warning: '⚠',
+    info: '📜',
+  })[type] || '📜';
+
+  const content = document.createElement('div');
+  content.className = 'notif-content';
+
+  const titleNode = document.createElement('span');
+  titleNode.className = 'notif-title';
+  titleNode.textContent = title;
+
+  const bodyNode = document.createElement('span');
+  bodyNode.className = 'notif-body';
+  bodyNode.textContent = body;
+
+  const close = document.createElement('button');
+  close.className = 'notif-close';
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Fermer la notification');
+  close.textContent = '✕';
+
+  content.append(titleNode, bodyNode);
+  notif.append(timer, icon, content, close);
+  stack.appendChild(notif);
+
+  const fadeTimer = window.setTimeout(() => notif.classList.add('fade-out'), 4000);
+  const removeTimer = window.setTimeout(() => removeNotification(notif), 4500);
+
+  close.addEventListener('click', () => {
+    window.clearTimeout(fadeTimer);
+    window.clearTimeout(removeTimer);
+    removeNotification(notif);
+  });
+
+  while (stack.children.length > 4) {
+    removeNotification(stack.firstElementChild);
+  }
 }
 
-// ─── INFO SERVEUR (live) ──────────────────────────────────────────────────────
-// Récupère joueurs, ping et métadonnées → met à jour toute l'UI en une passe.
+function openConsole(trigger) {
+  const overlay = byId('console-overlay');
+  if (!overlay) return;
 
-async function refreshServerInfo() {
-  const ip   = CONFIG.serverIp   || '127.0.0.1';
-  const port = CONFIG.serverPort || 30120;
+  STATE.consoleReturnFocus = trigger instanceof HTMLElement ? trigger : document.activeElement;
+  overlay.classList.remove('hidden');
+  byId('btn-close-console')?.focus();
+}
 
-  // Éléments sidebar
-  const pingEl        = document.getElementById('server-ping-display');
-  const pill          = document.getElementById('server-pill');
-  const pillTxt       = pill?.querySelector('.status-text');
-  const statOnline    = document.getElementById('stat-online');
+function closeConsole() {
+  const overlay = byId('console-overlay');
+  if (!overlay) return;
 
-  // Éléments server card (page Royaumes)
-  const scardPing     = document.getElementById('scard-main-ping');
-  const playersBar    = document.querySelector('.players-bar-fill');
-  const playersTxt    = document.querySelector('.players-count-text');
+  overlay.classList.add('hidden');
+  if (STATE.consoleReturnFocus instanceof HTMLElement) {
+    STATE.consoleReturnFocus.focus();
+  }
+}
 
-  let info;
+function updateWindowState(isMaximized) {
+  const button = query('.wm-max');
+  if (!button) return;
+
+  button.classList.toggle('is-maximized', Boolean(isMaximized));
+  button.textContent = isMaximized ? '❐' : '□';
+  button.title = isMaximized ? 'Restaurer' : 'Agrandir';
+  button.setAttribute('aria-label', isMaximized ? 'Restaurer' : 'Agrandir');
+}
+
+function setActivePage(pageId) {
+  const targetPage = byId(`page-${pageId}`);
+  if (!targetPage) return;
+
+  STATE.currentPage = pageId;
+
+  queryAll('.nav-tab[data-page]').forEach((button) => {
+    const isActive = button.dataset.page === pageId;
+    button.classList.toggle('active', isActive);
+    if (isActive) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
+
+  queryAll('.page').forEach((page) => {
+    page.classList.toggle('active', page.id === `page-${pageId}`);
+  });
+}
+
+function runLoader() {
+  const fill = byId('loader-fill');
+  const status = byId('loader-status');
+  const percent = byId('loader-pct');
+  const loader = byId('loader');
+  const app = byId('app');
+
+  const intervalId = window.setInterval(() => {
+    if (loaderStepIndex >= LOADER_STEPS.length) {
+      window.clearInterval(intervalId);
+      window.setTimeout(() => {
+        loader?.classList.add('hidden');
+        loader?.setAttribute('aria-hidden', 'true');
+        if (app) {
+          app.style.opacity = '1';
+          app.setAttribute('aria-hidden', 'false');
+        }
+        window.setTimeout(() => {
+          if (loader) loader.style.display = 'none';
+        }, 700);
+      }, 600);
+      return;
+    }
+
+    const step = LOADER_STEPS[loaderStepIndex];
+
+    if (fill) fill.style.width = `${step.pct}%`;
+    if (status) status.textContent = step.msg;
+    if (percent) percent.textContent = `${step.pct}%`;
+    query('.loader-track')?.setAttribute('aria-valuenow', String(step.pct));
+
+    loaderStepIndex += 1;
+  }, 420);
+}
+
+function applyConfigToUI() {
+  const ipInput = byId('setting-ip');
+  const portInput = byId('setting-port');
+  const pathDisplay = byId('fivem-path-display');
+  const musicToggle = byId('setting-music');
+  const volumeSlider = byId('setting-volume');
+  const volumeValue = byId('setting-volume-val');
+
+  if (ipInput) ipInput.value = CONFIG.serverIp;
+  if (portInput) portInput.value = String(CONFIG.serverPort);
+  if (pathDisplay) {
+    pathDisplay.textContent = CONFIG.fivemPath || 'Non détecté — cliquez sur Détecter ou Parcourir';
+    pathDisplay.title = CONFIG.fivemPath || '';
+  }
+  if (musicToggle) musicToggle.checked = Boolean(CONFIG.musicEnabled);
+  if (volumeSlider) {
+    volumeSlider.value = String(CONFIG.musicVolume);
+    volumeSlider.style.setProperty('--pct', `${CONFIG.musicVolume}%`);
+  }
+  if (volumeValue) volumeValue.textContent = `${CONFIG.musicVolume}%`;
+
+  updateConnectionDisplays();
+}
+
+function normalizePlayer(player, index) {
+  if (player && typeof player === 'object') {
+    const name = String(player.name ?? player.Name ?? `Joueur ${index + 1}`).trim();
+    const id = player.id ?? player.Id ?? null;
+    const ping = Number.isFinite(player.ping) ? Math.round(player.ping) : null;
+    return { name, id, ping };
+  }
+
+  return {
+    name: String(player ?? `Joueur ${index + 1}`).trim(),
+    id: null,
+    ping: null,
+  };
+}
+
+function normalizeServerInfo(rawInfo, connection) {
+  const rawPlayers = Array.isArray(rawInfo?.players) ? rawInfo.players : [];
+  const players = rawPlayers
+    .map((player, index) => normalizePlayer(player, index))
+    .filter((player) => player.name)
+    .slice(0, 8);
+
+  const playerCount = normalizePositiveInt(rawInfo?.playerCount, players.length);
+  const maxPlayers = normalizePositiveInt(rawInfo?.maxPlayers, 127);
+  const tags = Array.isArray(rawInfo?.tags)
+    ? rawInfo.tags
+    : String(rawInfo?.info?.vars?.sv_tags || rawInfo?.info?.vars?.tags || '')
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+  return {
+    online: Boolean(rawInfo?.online),
+    ms: Number.isFinite(rawInfo?.ms) ? Math.round(rawInfo.ms) : null,
+    players,
+    playerCount,
+    maxPlayers,
+    hostname: String(rawInfo?.hostname || 'Royaume de Valdris').trim(),
+    description: String(
+      rawInfo?.description ||
+      rawInfo?.info?.vars?.sv_projectDesc ||
+      'Serveur RP médiéval principal — Guildes, politique, sièges de châteaux',
+    ).trim(),
+    mapname: String(rawInfo?.mapname || 'Valdris').trim(),
+    gametype: String(rawInfo?.gametype || 'Medieval RP').trim(),
+    connectAddress: String(rawInfo?.connectAddress || formatAddress(connection)),
+    resources: normalizePositiveInt(rawInfo?.resources, 0),
+    locale: String(rawInfo?.locale || '').trim(),
+    tags,
+  };
+}
+
+async function requestServerInfo(connection) {
+  if (window.launcher?.getServerInfo) {
+    return window.launcher.getServerInfo(connection.ip, connection.port);
+  }
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 4000);
+  const baseUrl = `http://${connection.ip}:${connection.port}`;
 
   try {
-    if (window.launcher) {
-      info = await window.launcher.getServerInfo(ip, port);
-    } else {
-      // Fallback navigateur (CORS peut bloquer)
-      const start = Date.now();
-      const [ir, pr] = await Promise.allSettled([
-        fetch(`http://${ip}:${port}/info.json`,    { signal: AbortSignal.timeout(4000) }),
-        fetch(`http://${ip}:${port}/players.json`, { signal: AbortSignal.timeout(4000) }),
-      ]);
-      const ms = Date.now() - start;
-      const infoData    = ir.status === 'fulfilled' && ir.value.ok    ? await ir.value.json()    : null;
-      const playersData = pr.status === 'fulfilled' && pr.value.ok    ? await pr.value.json()    : [];
-      info = {
-        online:      !!infoData,
-        ms,
-        playerCount: Array.isArray(playersData) ? playersData.length : 0,
-        maxPlayers:  infoData?.vars?.sv_maxClients ?? 127,
-        hostname:    infoData?.vars?.sv_projectName || 'Royaume de Valdris',
-      };
+    const start = Date.now();
+    const [infoResult, playersResult] = await Promise.allSettled([
+      fetch(`${baseUrl}/info.json`, { signal: controller.signal }),
+      fetch(`${baseUrl}/players.json`, { signal: controller.signal }),
+    ]);
+
+    let info = null;
+    let players = [];
+
+    if (infoResult.status === 'fulfilled' && infoResult.value.ok) {
+      info = await infoResult.value.json();
     }
-  } catch {
-    info = { online: false, ms: null, playerCount: 0, maxPlayers: 127 };
-  }
 
-  if (info.online) {
-    // Sidebar — status pill
-    if (pill)    { pill.classList.remove('offline'); pill.classList.add('online'); }
-    if (pillTxt)   pillTxt.textContent = 'Serveur actif';
-    if (pingEl)    pingEl.textContent  = info.ms != null ? `${info.ms}ms` : '—';
+    if (playersResult.status === 'fulfilled' && playersResult.value.ok) {
+      players = await playersResult.value.json();
+    }
 
-    // Sidebar — compteur joueurs
-    if (statOnline) statOnline.textContent = String(info.playerCount ?? '—');
+    if (!info && !players.length) {
+      return { online: false, connectAddress: formatAddress(connection) };
+    }
 
-    // Server card — ping badge
-    if (scardPing) scardPing.textContent = info.ms != null ? `${info.ms}ms` : '—';
-
-    // Server card — barre joueurs
-    const max = info.maxPlayers || 127;
-    const pct = Math.round(((info.playerCount ?? 0) / max) * 100);
-    if (playersBar) playersBar.style.width = pct + '%';
-    if (playersTxt) playersTxt.textContent = `${info.playerCount ?? 0} / ${max}`;
-  } else {
-    if (pill)    { pill.classList.remove('online'); pill.classList.add('offline'); }
-    if (pillTxt)   pillTxt.textContent = 'Hors ligne';
-    if (pingEl)    pingEl.textContent  = '—';
-    if (statOnline) statOnline.textContent = '—';
-    if (scardPing)  scardPing.textContent  = 'Hors ligne';
+    return {
+      online: true,
+      ms: Date.now() - start,
+      playerCount: Array.isArray(players) ? players.length : 0,
+      players,
+      hostname: info?.vars?.sv_projectName || info?.hostname || 'Royaume de Valdris',
+      maxPlayers: info?.vars?.sv_maxClients ?? 127,
+      gametype: info?.vars?.gametype || 'Medieval RP',
+      mapname: info?.vars?.mapname || 'Valdris',
+      description: info?.vars?.sv_projectDesc || '',
+      connectAddress: formatAddress(connection),
+      info,
+    };
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 
-// ─── LIENS SIDEBAR (ouverts dans le navigateur système) ───────────────────────
-// Les URLs configurables via data-url sur les éléments .slink.
+function renderActivityFeed(info) {
+  const container = byId('activity-items');
+  if (!container) return;
+
+  const items = [];
+
+  if (info.online) {
+    info.players.slice(0, 2).forEach((player) => {
+      items.push({
+        tone: 'green',
+        highlight: player.name,
+        suffix: ' patrouille actuellement le royaume',
+        time: player.ping != null ? `${player.ping}ms` : 'En ligne',
+      });
+    });
+
+    items.push({
+      tone: info.playerCount > Math.max(10, Math.round(info.maxPlayers * 0.6)) ? 'blood' : 'gold',
+      highlight: `${info.playerCount}/${info.maxPlayers}`,
+      suffix: ` aventuriers actifs sur ${info.mapname}`,
+      time: formatPing(info.ms),
+    });
+  } else {
+    items.push({
+      tone: 'blood',
+      highlight: 'Serveur hors ligne',
+      suffix: ` pour ${info.connectAddress}`,
+      time: 'À vérifier',
+    });
+  }
+
+  const feedItems = (items.length ? items : FALLBACK_ACTIVITY).slice(0, 3);
+
+  container.replaceChildren();
+
+  feedItems.forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'act-item';
+
+    const dot = document.createElement('span');
+    dot.className = `act-dot ${item.tone}`;
+    dot.setAttribute('aria-hidden', 'true');
+
+    const text = document.createElement('span');
+    text.className = 'act-text';
+
+    if (item.highlight) {
+      const strong = document.createElement('strong');
+      strong.textContent = item.highlight;
+      text.append(strong, document.createTextNode(item.suffix || ''));
+    } else {
+      text.textContent = item.suffix || '';
+    }
+
+    const time = document.createElement('span');
+    time.className = 'act-time';
+    time.textContent = item.time || '';
+
+    row.append(dot, text, time);
+    container.appendChild(row);
+  });
+}
+
+function renderTicker(info) {
+  const track = byId('ticker-inner');
+  if (!track) return;
+
+  const items = [];
+
+  if (info.online) {
+    items.push(
+      { strong: `${info.playerCount} aventuriers`, body: `en ligne sur ${info.maxPlayers}` },
+      { strong: 'Adresse', body: info.connectAddress },
+      { strong: 'Monde actif', body: `${info.mapname} · ${info.gametype}` },
+    );
+
+    if (info.resources > 0) {
+      items.push({ strong: 'Ressources', body: `${info.resources} chargées côté serveur` });
+    }
+  } else {
+    items.push(
+      { strong: 'Serveur hors ligne', body: `vérifie ${info.connectAddress}` },
+      { strong: 'Forge', body: 'teste la connexion depuis les paramètres' },
+    );
+  }
+
+  const finalItems = [...items, ...TICKER_FALLBACK];
+  const duplicated = [...finalItems, ...finalItems];
+
+  track.replaceChildren();
+
+  duplicated.forEach((item, index) => {
+    const entry = document.createElement('span');
+    entry.className = 'ticker-item';
+
+    const dot = document.createElement('span');
+    dot.className = 'tdot';
+    dot.setAttribute('aria-hidden', 'true');
+
+    const strong = document.createElement('strong');
+    strong.textContent = item.strong;
+
+    entry.append(dot, strong, document.createTextNode(` — ${item.body}`));
+    track.appendChild(entry);
+
+    if (index < duplicated.length - 1) {
+      const separator = document.createElement('span');
+      separator.className = 'ticker-sep';
+      separator.setAttribute('aria-hidden', 'true');
+      separator.textContent = '✦';
+      track.appendChild(separator);
+    }
+  });
+}
+
+function renderPlayerRoster(info) {
+  const roster = byId('player-roster');
+  const summary = byId('roster-summary');
+  if (!roster || !summary) return;
+
+  roster.replaceChildren();
+
+  if (!info.online) {
+    summary.textContent = `Serveur indisponible · ${info.connectAddress}`;
+
+    const empty = document.createElement('div');
+    empty.className = 'player-empty';
+    empty.textContent = 'Impossible de récupérer la présence en direct tant que le serveur ne répond pas.';
+    roster.appendChild(empty);
+    return;
+  }
+
+  summary.textContent = `${info.playerCount} aventuriers connectés · ${formatPing(info.ms)} · ${info.mapname}`;
+
+  if (!info.players.length) {
+    const empty = document.createElement('div');
+    empty.className = 'player-empty';
+    empty.textContent = 'Le serveur répond mais aucun joueur n’est connecté pour le moment.';
+    roster.appendChild(empty);
+    return;
+  }
+
+  info.players.forEach((player) => {
+    const card = document.createElement('div');
+    card.className = 'player-card';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'player-avatar';
+    avatar.textContent = player.name.charAt(0).toUpperCase();
+
+    const main = document.createElement('div');
+    main.className = 'player-main';
+
+    const name = document.createElement('span');
+    name.className = 'player-name';
+    name.textContent = player.name;
+
+    const meta = document.createElement('span');
+    meta.className = 'player-meta';
+
+    if (player.id != null && player.ping != null) meta.textContent = `ID #${player.id} · ${player.ping}ms`;
+    else if (player.id != null) meta.textContent = `ID #${player.id}`;
+    else if (player.ping != null) meta.textContent = `${player.ping}ms`;
+    else meta.textContent = 'Connecté';
+
+    main.append(name, meta);
+    card.append(avatar, main);
+    roster.appendChild(card);
+  });
+}
+
+function renderServerSnapshot(info) {
+  const pill = byId('server-pill');
+  const pillText = pill?.querySelector('.status-text');
+  const pingDisplay = byId('server-ping-display');
+  const statOnline = byId('stat-online');
+  const statCapacity = byId('stat-capacity');
+  const heroDot = byId('hero-status-dot');
+  const heroText = byId('hero-status-text');
+  const mainCard = byId('server-card-main');
+  const mainStatus = byId('scard-main-status');
+  const mainPlayersBar = byId('server-main-players-bar');
+  const mainPlayersCount = byId('server-main-players-count');
+  const playSub = query('.play-sub');
+
+  const isOnline = info.online;
+  const statusText = isOnline ? 'Serveur actif' : 'Hors ligne';
+
+  if (pill) {
+    pill.classList.toggle('online', isOnline);
+    pill.classList.toggle('offline', !isOnline);
+  }
+  if (pillText) pillText.textContent = statusText;
+  if (pingDisplay) pingDisplay.textContent = isOnline ? formatPing(info.ms) : '—';
+
+  setText(statOnline, isOnline ? String(info.playerCount) : '—');
+  setText(statCapacity, String(info.maxPlayers));
+
+  if (heroDot) heroDot.classList.toggle('online', isOnline);
+  if (heroText) {
+    heroText.classList.toggle('online', isOnline);
+    heroText.textContent = isOnline
+      ? `${statusText} · ${formatPing(info.ms)}`
+      : `Serveur indisponible · ${info.connectAddress}`;
+  }
+
+  if (mainCard) {
+    mainCard.dataset.online = String(isOnline);
+    mainCard.classList.toggle('live-online', isOnline);
+    mainCard.classList.toggle('live-offline', !isOnline);
+    mainCard.dataset.tags = [
+      'official',
+      isOnline ? 'online' : 'offline',
+      info.gametype,
+      info.mapname,
+      ...info.tags,
+    ].join(' ').toLowerCase();
+  }
+
+  if (mainStatus) {
+    mainStatus.classList.toggle('online', isOnline);
+    mainStatus.classList.toggle('offline-status', !isOnline);
+  }
+
+  setText('scard-main-ping', isOnline ? formatPing(info.ms) : 'Hors ligne');
+  setText('server-main-name', `🏰 ${info.hostname}`);
+  setText('server-main-desc', info.description);
+  setText('server-main-address', info.connectAddress);
+  setText('server-main-map', info.mapname);
+  setText('server-main-mode', info.gametype);
+  setText('home-server-address', info.connectAddress);
+  setText('home-server-players', `${info.playerCount} / ${info.maxPlayers}`);
+  setText('home-server-map', info.mapname);
+  setText('home-server-mode', info.gametype);
+
+  if (playSub) playSub.textContent = `FiveM · ${info.gametype}`;
+
+  const fillPercent = clamp(Math.round((info.playerCount / Math.max(info.maxPlayers, 1)) * 100), 0, 100);
+  if (mainPlayersBar) mainPlayersBar.style.width = `${fillPercent}%`;
+  if (mainPlayersCount) mainPlayersCount.textContent = `${info.playerCount} / ${info.maxPlayers}`;
+
+  renderPlayerRoster(info);
+  renderActivityFeed(info);
+  renderTicker(info);
+  setConnectionStatusBadge(isOnline ? 'online' : 'offline', isOnline ? 'En ligne' : 'Hors ligne');
+  applyServerFilters();
+}
+
+async function refreshServerInfo(options = {}) {
+  const { force = false, origin = 'auto' } = options;
+
+  if (STATE.isRefreshingServerInfo && !force) return STATE.serverInfo;
+
+  const refreshButton = byId('btn-refresh-server');
+  const stopLoading = beginButtonLoading(refreshButton, 'Actualisation…');
+  const connection = getConnection();
+
+  STATE.isRefreshingServerInfo = true;
+  setConnectionStatusBadge('sync', 'Analyse…');
+
+  try {
+    const rawInfo = await requestServerInfo(connection);
+    const normalized = normalizeServerInfo(rawInfo, connection);
+    const previousStatus = STATE.lastServerStatus;
+
+    STATE.serverInfo = normalized;
+    STATE.lastServerStatus = normalized.online;
+
+    renderServerSnapshot(normalized);
+
+    if (previousStatus === null) {
+      addConsoleLog(
+        normalized.online ? 'ok' : 'warn',
+        normalized.online
+          ? `Serveur détecté : ${normalized.hostname} (${normalized.connectAddress})`
+          : `Serveur injoignable : ${normalized.connectAddress}`,
+      );
+    } else if (previousStatus !== normalized.online) {
+      addConsoleLog(
+        normalized.online ? 'ok' : 'warn',
+        normalized.online ? `Le serveur est revenu en ligne (${formatPing(normalized.ms)})` : 'Le serveur ne répond plus.',
+      );
+      showNotif(
+        normalized.online ? 'success' : 'warning',
+        normalized.online ? 'Serveur de retour' : 'Serveur indisponible',
+        normalized.online ? `${normalized.hostname} répond à nouveau.` : `Aucune réponse de ${normalized.connectAddress}.`,
+      );
+    } else if (origin === 'manual') {
+      showNotif(
+        normalized.online ? 'success' : 'warning',
+        normalized.online ? 'Serveur joignable' : 'Toujours hors ligne',
+        normalized.online
+          ? `${normalized.hostname} répond en ${formatPing(normalized.ms)}.`
+          : `Le diagnostic n'a reçu aucune réponse de ${normalized.connectAddress}.`,
+      );
+    }
+
+    return normalized;
+  } catch (error) {
+    const offlineInfo = normalizeServerInfo({ online: false }, connection);
+    STATE.serverInfo = offlineInfo;
+    renderServerSnapshot(offlineInfo);
+    addConsoleLog('err', `Erreur lors du rafraîchissement serveur : ${error.message}`);
+    showNotif('error', 'Erreur serveur', error.message);
+    return offlineInfo;
+  } finally {
+    STATE.isRefreshingServerInfo = false;
+    stopLoading();
+  }
+}
+
+function applyServerFilters() {
+  const search = String(byId('server-search')?.value || '').trim().toLowerCase();
+  const filter = String(byId('server-filter')?.value || 'all').toLowerCase();
+  const cards = queryAll('[data-server-card]');
+  const emptyState = byId('servers-empty');
+
+  let visibleCount = 0;
+
+  cards.forEach((card) => {
+    const haystack = `${card.dataset.tags || ''} ${card.textContent || ''}`.toLowerCase();
+    const matchesSearch = !search || haystack.includes(search);
+
+    let matchesFilter = true;
+    if (filter === 'online') matchesFilter = card.dataset.online === 'true';
+    else if (filter !== 'all') matchesFilter = (card.dataset.tags || '').toLowerCase().includes(filter);
+
+    const visible = matchesSearch && matchesFilter;
+    card.classList.toggle('is-hidden-filter', !visible);
+    if (visible) visibleCount += 1;
+  });
+
+  if (emptyState) emptyState.classList.toggle('hidden', visibleCount !== 0);
+}
+
+function updateNewsTimes() {
+  queryAll('.ncard-date[datetime]').forEach((node) => {
+    const datetime = node.getAttribute('datetime');
+    if (!datetime) return;
+    node.textContent = formatNewsDate(datetime);
+  });
+}
+
+async function copyText(text, successTitle) {
+  try {
+    let copied = false;
+
+    if (window.launcher?.copyText) {
+      copied = await window.launcher.copyText(text);
+    } else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    }
+
+    if (!copied) throw new Error('API de copie indisponible.');
+
+    showNotif('success', successTitle, text);
+    addConsoleLog('ok', `Copié dans le presse-papiers : ${text}`);
+    return true;
+  } catch (error) {
+    showNotif('error', 'Copie impossible', error.message);
+    addConsoleLog('err', `Impossible de copier : ${error.message}`);
+    return false;
+  }
+}
+
+function copyConnectionAddress() {
+  const info = STATE.serverInfo;
+  const address = info?.connectAddress || formatAddress(getConnection());
+  return copyText(address, 'Adresse copiée');
+}
+
+async function launchGame(options = {}) {
+  const trigger = options.trigger instanceof HTMLElement ? options.trigger : byId('play-btn');
+  const stopLoading = beginButtonLoading(
+    trigger,
+    trigger?.id === 'play-btn' ? 'CONNEXION…' : 'Connexion…',
+  );
+
+  const connection = getConnection(options);
+  addConsoleLog('info', `Lancement FiveM → ${connection.ip}:${connection.port}`);
+
+  try {
+    if (!window.launcher?.launchGame) {
+      showNotif('info', 'Mode aperçu', 'FiveM ne peut être lancé que dans Electron.');
+      addConsoleLog('warn', 'Lancement simulé hors Electron.');
+      return;
+    }
+
+    const result = await window.launcher.launchGame(connection);
+    if (!result?.ok) throw new Error(result?.error || 'Le lancement a échoué.');
+
+    const methodLabel = ({
+      'uri-scheme': 'URI FiveM',
+      'spawn-exe': 'exécutable direct',
+      'uri-fallback': 'URI de secours',
+      'uri-final-fallback': 'URI finale de secours',
+    })[result.method] || result.method || 'méthode inconnue';
+
+    addConsoleLog('ok', `FiveM lancé via ${methodLabel}`);
+
+    if (result.warning) {
+      addConsoleLog('warn', result.warning);
+      showNotif('warning', 'Lancement avec avertissement', result.warning);
+    } else {
+      showNotif('success', 'Connexion en cours', `FiveM tente de rejoindre ${connection.ip}:${connection.port}.`);
+    }
+  } catch (error) {
+    addConsoleLog('err', error.message);
+    showNotif('error', 'Échec du lancement', error.message);
+  } finally {
+    stopLoading();
+  }
+}
+
+async function handleAutoDetectFiveM({ notifyIfMissing = false } = {}) {
+  if (!window.launcher?.detectFiveM) return null;
+
+  try {
+    const detected = await window.launcher.detectFiveM();
+    if (!detected) {
+      if (notifyIfMissing) showNotif('warning', 'Détection introuvable', 'Aucun FiveM.exe détecté automatiquement.');
+      return null;
+    }
+
+    CONFIG.fivemPath = detected;
+    await persistConfig({ fivemPath: detected });
+    applyConfigToUI();
+    addConsoleLog('ok', `FiveM détecté automatiquement : ${detected}`);
+
+    if (notifyIfMissing) showNotif('success', 'FiveM détecté', detected);
+    return detected;
+  } catch (error) {
+    addConsoleLog('err', `Détection FiveM impossible : ${error.message}`);
+    showNotif('error', 'Détection impossible', error.message);
+    return null;
+  }
+}
+
+function initWindowControls() {
+  query('.wm-min')?.addEventListener('click', () => window.launcher?.minimize?.());
+  query('.wm-max')?.addEventListener('click', () => window.launcher?.maximize?.());
+  query('.wm-cls')?.addEventListener('click', () => window.launcher?.close?.());
+
+  if (window.launcher?.on) {
+    window.launcher.on('window-state', (state) => updateWindowState(state?.isMaximized));
+  }
+
+  window.launcher?.getWindowState?.()
+    .then((state) => updateWindowState(state?.isMaximized))
+    .catch(() => {});
+}
+
+function initNavigation() {
+  queryAll('.nav-tab[data-page]').forEach((button) => {
+    button.addEventListener('click', () => setActivePage(button.dataset.page));
+  });
+}
+
+function initConsole() {
+  byId('btn-open-console')?.addEventListener('click', (event) => openConsole(event.currentTarget));
+  byId('btn-close-console')?.addEventListener('click', closeConsole);
+
+  byId('console-overlay')?.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) closeConsole();
+  });
+}
 
 function initSidebarLinks() {
-  document.querySelectorAll('.slink[data-url]').forEach(link => {
-    link.addEventListener('click', async (e) => {
-      e.preventDefault();
-      const url = link.dataset.url;
-      if (!url) return;
+  queryAll('.slink[data-url]').forEach((link) => {
+    link.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const url = link.dataset.url || '';
 
-      if (window.launcher) {
+      if (!url || url.includes('VOTRE_')) {
+        showNotif('warning', 'Lien de démonstration', 'Remplace les URLs de démonstration avant la release.');
+        return;
+      }
+
+      if (window.launcher?.openExternal) {
         const result = await window.launcher.openExternal(url);
-        if (!result.ok) {
-          showNotif('error', '✕ Lien invalide', result.error || 'URL non autorisée');
-        }
+        if (!result?.ok) showNotif('error', 'Lien refusé', result?.error || 'URL non autorisée');
       } else {
         window.open(url, '_blank', 'noopener,noreferrer');
       }
@@ -292,167 +1006,204 @@ function initSidebarLinks() {
   });
 }
 
-// ─── PAGE FORGE (SETTINGS) ────────────────────────────────────────────────────
-
-function applyConfigToUI() {
-  const ipInput   = document.getElementById('setting-ip');
-  const portInput = document.getElementById('setting-port');
-  const pathDisp  = document.getElementById('fivem-path-display');
-  const musicChk  = document.getElementById('setting-music');
-  const volSlider = document.getElementById('setting-volume');
-  const volVal    = document.getElementById('setting-volume-val');
-
-  if (ipInput)   ipInput.value       = CONFIG.serverIp;
-  if (portInput) portInput.value     = CONFIG.serverPort;
-  if (pathDisp)  pathDisp.textContent = CONFIG.fivemPath || 'Non détecté — cliquez sur Parcourir';
-  if (musicChk)  musicChk.checked    = CONFIG.musicEnabled;
-  if (volSlider) {
-    volSlider.value = CONFIG.musicVolume;
-    volSlider.style.setProperty('--pct', CONFIG.musicVolume + '%');
-  }
-  if (volVal) volVal.textContent = CONFIG.musicVolume + '%';
-}
-
-function saveField(key, value) {
-  CONFIG[key] = value;
-  if (window.launcher) window.launcher.setConfig({ [key]: value });
-}
-
-function initSettingsPage() {
-  const ipInput = document.getElementById('setting-ip');
-  if (ipInput) {
-    ipInput.addEventListener('change', () => {
-      saveField('serverIp', ipInput.value.trim());
-      // Relancer une info serveur avec la nouvelle IP
-      setTimeout(refreshServerInfo, 300);
-    });
-  }
-
-  const portInput = document.getElementById('setting-port');
-  if (portInput) {
-    portInput.addEventListener('change', () => {
-      const v = parseInt(portInput.value, 10);
-      if (v > 0 && v < 65536) {
-        saveField('serverPort', v);
-        setTimeout(refreshServerInfo, 300);
-      }
-    });
-  }
-
-  const browseBtn = document.getElementById('btn-browse-fivem');
-  if (browseBtn && window.launcher) {
-    browseBtn.addEventListener('click', async () => {
-      const chosen = await window.launcher.selectPath();
-      if (chosen) {
-        saveField('fivemPath', chosen);
-        const pathDisp = document.getElementById('fivem-path-display');
-        if (pathDisp) pathDisp.textContent = chosen;
-        showNotif('success', '⚔ Chemin enregistré', chosen);
-        addConsoleLog('ok', `FiveM.exe → ${chosen}`);
-      }
-    });
-  }
-
-  const musicChk = document.getElementById('setting-music');
-  if (musicChk) {
-    musicChk.addEventListener('change', () => saveField('musicEnabled', musicChk.checked));
-  }
-
-  const volSlider = document.getElementById('setting-volume');
-  const volVal    = document.getElementById('setting-volume-val');
-  if (volSlider) {
-    volSlider.addEventListener('input', () => {
-      const v = parseInt(volSlider.value, 10);
-      volSlider.style.setProperty('--pct', v + '%');
-      if (volVal) volVal.textContent = v + '%';
-      saveField('musicVolume', v);
-    });
-  }
-}
-
-// ─── LOGS SERVEUR LOCAL (IPC) ─────────────────────────────────────────────────
-
 function initServerLogs() {
-  if (!window.launcher) return;
+  if (!window.launcher?.on) return;
 
-  window.launcher.on('server-output', data => {
-    data.split('\n').filter(Boolean).forEach(line => addConsoleLog('info', line));
+  window.launcher.on('server-output', (data) => {
+    String(data).split('\n').map((line) => line.trim()).filter(Boolean).forEach((line) => addConsoleLog('info', line));
   });
-  window.launcher.on('server-error', data => {
-    data.split('\n').filter(Boolean).forEach(line => addConsoleLog('err', line));
+
+  window.launcher.on('server-error', (data) => {
+    String(data).split('\n').map((line) => line.trim()).filter(Boolean).forEach((line) => addConsoleLog('err', line));
   });
-  window.launcher.on('server-closed', code => {
+
+  window.launcher.on('server-closed', (code) => {
     addConsoleLog('warn', `Serveur local terminé (code ${code})`);
   });
 }
 
-// ─── DÉTECTION AUTO FIVEM AU DÉMARRAGE ───────────────────────────────────────
+function initSettingsPage() {
+  const ipInput = byId('setting-ip');
+  const portInput = byId('setting-port');
+  const volumeSlider = byId('setting-volume');
+  const volumeValue = byId('setting-volume-val');
 
-async function autoDetectFiveM() {
-  if (!window.launcher || CONFIG.fivemPath) return;
+  ipInput?.addEventListener('change', () => {
+    const value = sanitizeHost(ipInput.value);
+    if (!value) {
+      ipInput.value = CONFIG.serverIp;
+      showNotif('error', 'Adresse invalide', 'Utilise une IP, localhost ou un nom de domaine simple.');
+      return;
+    }
 
-  const detected = await window.launcher.detectFiveM();
-  if (detected) {
-    CONFIG.fivemPath = detected;
-    await window.launcher.setConfig({ fivemPath: detected });
-    const pathDisp = document.getElementById('fivem-path-display');
-    if (pathDisp) pathDisp.textContent = detected;
-    addConsoleLog('ok', `FiveM détecté automatiquement : ${detected}`);
-  } else {
-    addConsoleLog('info', 'FiveM non détecté — configurez le chemin dans Forge.');
-  }
+    saveField('serverIp', value);
+    updateConnectionDisplays();
+    addConsoleLog('info', `Adresse serveur mise à jour : ${value}:${CONFIG.serverPort}`);
+    void refreshServerInfo({ force: true, origin: 'manual' });
+  });
+
+  portInput?.addEventListener('change', () => {
+    const value = normalizePort(portInput.value, -1);
+    if (value === -1) {
+      portInput.value = String(CONFIG.serverPort);
+      showNotif('error', 'Port invalide', 'Le port doit être compris entre 1 et 65535.');
+      return;
+    }
+
+    saveField('serverPort', value);
+    updateConnectionDisplays();
+    addConsoleLog('info', `Port serveur mis à jour : ${CONFIG.serverIp}:${value}`);
+    void refreshServerInfo({ force: true, origin: 'manual' });
+  });
+
+  byId('btn-autodetect-fivem')?.addEventListener('click', () => {
+    void handleAutoDetectFiveM({ notifyIfMissing: true });
+  });
+
+  byId('btn-browse-fivem')?.addEventListener('click', async () => {
+    if (!window.launcher?.selectPath) return;
+
+    const selected = await window.launcher.selectPath();
+    if (!selected) return;
+
+    CONFIG.fivemPath = selected;
+    await persistConfig({ fivemPath: selected });
+    applyConfigToUI();
+    addConsoleLog('ok', `FiveM.exe sélectionné : ${selected}`);
+    showNotif('success', 'Chemin enregistré', selected);
+  });
+
+  byId('btn-test-connection')?.addEventListener('click', () => {
+    void refreshServerInfo({ force: true, origin: 'manual' });
+  });
+
+  byId('btn-copy-address')?.addEventListener('click', () => {
+    void copyConnectionAddress();
+  });
+
+  byId('setting-music')?.addEventListener('change', (event) => {
+    void saveField('musicEnabled', Boolean(event.currentTarget.checked));
+  });
+
+  volumeSlider?.addEventListener('input', () => {
+    const value = clamp(Number.parseInt(volumeSlider.value, 10) || 0, 0, 100);
+    volumeSlider.style.setProperty('--pct', `${value}%`);
+    if (volumeValue) volumeValue.textContent = `${value}%`;
+    void saveField('musicVolume', value);
+  });
 }
 
-// ─── VERSION DANS LA TITLEBAR ─────────────────────────────────────────────────
+function initPrimaryActions() {
+  byId('play-btn')?.addEventListener('click', (event) => {
+    void launchGame({ trigger: event.currentTarget });
+  });
 
-async function initVersion() {
-  if (!window.launcher) return;
-  try {
-    const ver = await window.launcher.getVersion();
-    const vEl = document.querySelector('.tb-version');
-    if (vEl && ver) vEl.textContent = `v${ver}`;
-    const ldrVer = document.querySelector('.loader-version');
-    if (ldrVer && ver) ldrVer.textContent = `v${ver}`;
-  } catch { /* optionnel */ }
+  byId('btn-join-main')?.addEventListener('click', (event) => {
+    void launchGame({ trigger: event.currentTarget });
+  });
+
+  byId('btn-join-local')?.addEventListener('click', (event) => {
+    addConsoleLog('info', `Preset local activé → ${LOCAL_SERVER_PRESET.ip}:${LOCAL_SERVER_PRESET.port}`);
+    showNotif('info', 'Preset local', 'Connexion vers 127.0.0.1:30120.');
+    void launchGame({ ...LOCAL_SERVER_PRESET, trigger: event.currentTarget });
+  });
+
+  byId('btn-refresh-server')?.addEventListener('click', () => {
+    void refreshServerInfo({ force: true, origin: 'manual' });
+  });
+
+  byId('btn-copy-connect')?.addEventListener('click', () => {
+    void copyConnectionAddress();
+  });
 }
 
-// ─── INIT PRINCIPAL ───────────────────────────────────────────────────────────
+function initServerFilters() {
+  byId('server-search')?.addEventListener('input', applyServerFilters);
+  byId('server-filter')?.addEventListener('change', applyServerFilters);
+  applyServerFilters();
+}
+
+function initVersion() {
+  if (!window.launcher?.getVersion) return;
+
+  window.launcher.getVersion()
+    .then((version) => {
+      if (!version) return;
+      setText(query('.tb-version'), `v${version}`);
+      setText(query('.loader-version'), `v${version}`);
+    })
+    .catch(() => {});
+}
+
+function initKeyboardShortcuts() {
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeConsole();
+      return;
+    }
+
+    if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'c') {
+      event.preventDefault();
+      openConsole(byId('btn-open-console'));
+      return;
+    }
+
+    if (event.ctrlKey && event.key === 'Enter') {
+      event.preventDefault();
+      void launchGame({ trigger: byId('play-btn') });
+      return;
+    }
+
+    if (event.ctrlKey && /^[1-4]$/.test(event.key)) {
+      event.preventDefault();
+      const pages = ['home', 'servers', 'news', 'settings'];
+      setActivePage(pages[Number(event.key) - 1]);
+    }
+  });
+}
+
+function startTimers() {
+  STATE.refreshTimerId = window.setInterval(() => {
+    void refreshServerInfo();
+  }, REFRESH_INTERVAL_MS);
+
+  STATE.newsTimerId = window.setInterval(updateNewsTimes, NEWS_REFRESH_INTERVAL_MS);
+}
 
 window.addEventListener('DOMContentLoaded', async () => {
-
-  // 1. Charger la config persistante
-  if (window.launcher) {
+  if (window.launcher?.getConfig) {
     try {
       const saved = await window.launcher.getConfig();
-      CONFIG = { ...CONFIG, ...saved };
-    } catch { /* config absente → valeurs par défaut */ }
+      CONFIG = { ...DEFAULT_CONFIG, ...saved };
+    } catch {
+      CONFIG = { ...DEFAULT_CONFIG };
+    }
   }
 
-  // 2. Version dans la titlebar / loader
   initVersion();
-
-  // 3. Lancer le loader visuel
+  applyConfigToUI();
   runLoader();
 
-  // 4. Appliquer la config à l'UI
-  applyConfigToUI();
-
-  // 5. Brancher la page Forge
-  initSettingsPage();
-
-  // 6. Brancher les liens sidebar
+  initWindowControls();
+  initNavigation();
+  initConsole();
   initSidebarLinks();
-
-  // 7. Brancher les logs serveur IPC
+  initSettingsPage();
+  initPrimaryActions();
+  initServerFilters();
   initServerLogs();
+  initKeyboardShortcuts();
+  updateNewsTimes();
+  startTimers();
 
-  // 8. Premier chargement des infos serveur (décalé pour laisser le loader jouer)
-  setTimeout(refreshServerInfo, 1800);
-  setInterval(refreshServerInfo, 30_000);
+  updateConnectionDisplays();
+  setConnectionStatusBadge('sync', 'Analyse…');
 
-  // 9. Détection auto FiveM (arrière-plan)
-  setTimeout(autoDetectFiveM, 2500);
+  window.setTimeout(() => {
+    void refreshServerInfo({ origin: 'init' });
+  }, 1600);
+
+  window.setTimeout(() => {
+    if (!CONFIG.fivemPath) void handleAutoDetectFiveM();
+  }, 2200);
 });
-
-// ─── EXPORTS GLOBAUX (appelés depuis les onclick HTML) ────────────────────────
-
