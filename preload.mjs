@@ -8,7 +8,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 // Canaux IPC autorisés en écoute (whitelist sécurité)
-const ALLOWED_CHANNELS = ['server-output', 'server-error', 'server-closed'];
+const ALLOWED_CHANNELS = ['server-output', 'server-error', 'server-closed', 'window-state'];
 
 contextBridge.exposeInMainWorld('launcher', {
 
@@ -16,9 +16,11 @@ contextBridge.exposeInMainWorld('launcher', {
   minimize: () => ipcRenderer.invoke('win-minimize'),
   maximize: () => ipcRenderer.invoke('win-maximize'),
   close:    () => ipcRenderer.invoke('win-close'),
+  getWindowState: () => ipcRenderer.invoke('get-window-state'),
 
   // ── Version de l'application ──────────────────────────────────
   getVersion: () => ipcRenderer.invoke('get-version'),
+  copyText:   (text) => ipcRenderer.invoke('copy-text', text),
 
   // ── Configuration persistante ─────────────────────────────────
   // Retourne { fivemPath, serverIp, serverPort, musicEnabled, musicVolume }

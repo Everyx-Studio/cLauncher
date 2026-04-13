@@ -456,6 +456,3 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 // ─── EXPORTS GLOBAUX (appelés depuis les onclick HTML) ────────────────────────
 
-window.launchGame   = launchGame;
-window.openConsole  = openConsole;
-window.closeConsole = closeConsole;

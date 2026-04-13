@@ -9,9 +9,9 @@
 //   - start-local-server protégé par try/catch
 //   - Nettoyage à la fermeture (serverProcess.kill garantit)
 
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import path    from 'path';
-import fs, { appendFile }      from 'fs';
+import fs      from 'fs';
 import { spawn }      from 'child_process';
 import { fileURLToPath } from 'url';
 import { rpc } from './discord-rpc/discord-rpc.mjs';
@@ -19,6 +19,8 @@ import { rpc } from './discord-rpc/discord-rpc.mjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const isDev      = process.argv.includes('--dev');
+const SERVER_DIR = path.resolve(__dirname, '..', 'server');
+const SERVER_ENTRY = path.join(SERVER_DIR, 'index.js');
 
 // ─── INSTANCE UNIQUE ──────────────────────────────────────────────────────────
 // Empêche l'ouverture de plusieurs fenêtres simultanées.
@@ -98,9 +100,40 @@ function detectFiveMPath() {
   return null;
 }
 
+function sanitizeHost(value) {
+  const host = String(value ?? '').trim();
+  if (!host) return '';
+  if (host === 'localhost') return host;
+  if (/^\[[0-9a-fA-F:]+\]$/.test(host)) return host;
+  return /^[a-zA-Z0-9.-]+$/.test(host) ? host : '';
+}
+
+function normalizePort(value) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 && parsed < 65536
+    ? parsed
+    : DEFAULT_CONFIG.serverPort;
+}
+
+function normalizeConnection(input = {}) {
+  return {
+    ip: sanitizeHost(input.ip) || DEFAULT_CONFIG.serverIp,
+    port: normalizePort(input.port),
+    fivemPath: typeof input.fivemPath === 'string' ? input.fivemPath : '',
+  };
+}
+
+function emitWindowState() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send('window-state', {
+    isMaximized: mainWindow.isMaximized(),
+  });
+}
+
 // ─── LANCEMENT FIVEM ──────────────────────────────────────────────────────────
 
-async function doLaunchFiveM({ ip, port, fivemPath }) {
+async function doLaunchFiveM(options) {
+  const { ip, port, fivemPath } = normalizeConnection(options);
   const connectStr = `${ip}:${port}`;
   const uriConnect = `fivem://connect/${connectStr}`;
 
@@ -144,7 +177,8 @@ async function doLaunchFiveM({ ip, port, fivemPath }) {
 // Récupère les données publiques du serveur FiveM (/info.json + /players.json)
 // sans contrainte CORS puisque tout passe par le processus principal.
 
-async function fetchServerInfo({ ip, port }) {
+async function fetchServerInfo(options) {
+  const { ip, port } = normalizeConnection(options);
   const base = `http://${ip}:${port}`;
   const ctrl  = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 4000);
@@ -172,8 +206,24 @@ async function fetchServerInfo({ ip, port }) {
     }
 
     if (!info && players.length === 0) {
-      return { online: false, ms: null, players: [], info: null };
+      return {
+        online: false,
+        ms: null,
+        players: [],
+        info: null,
+        connectAddress: `${ip}:${port}`,
+      };
     }
+
+    const maxPlayers = Number.parseInt(
+      info?.vars?.sv_maxClients ?? info?.vars?.sv_maxclients ?? 127,
+      10,
+    ) || 127;
+    const tags = String(info?.vars?.sv_tags || info?.vars?.tags || '')
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(Boolean)
+      .slice(0, 8);
 
     return {
       online:      true,
@@ -181,14 +231,25 @@ async function fetchServerInfo({ ip, port }) {
       playerCount: Array.isArray(players) ? players.length : 0,
       players:     Array.isArray(players) ? players.slice(0, 20) : [],  // 20 premiers suffisent à l'UI
       hostname:    info?.vars?.sv_projectName || info?.hostname || 'Royaume de Valdris',
-      maxPlayers:  info?.vars?.sv_maxClients  ?? 127,
+      maxPlayers,
       gametype:    info?.vars?.gametype        || 'Medieval RP',
       mapname:     info?.vars?.mapname         || 'Valdris',
+      description: info?.vars?.sv_projectDesc || info?.vars?.sv_projectDescription || info?.description || '',
+      resources:   Array.isArray(info?.resources) ? info.resources.length : 0,
+      locale:      info?.vars?.locale || '',
+      tags,
+      connectAddress: `${ip}:${port}`,
       info,
     };
   } catch {
     clearTimeout(timer);
-    return { online: false, ms: null, players: [], info: null };
+    return {
+      online: false,
+      ms: null,
+      players: [],
+      info: null,
+      connectAddress: `${ip}:${port}`,
+    };
   }
 }
 
@@ -242,8 +303,12 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    emitWindowState();
     if (isDev) mainWindow.webContents.openDevTools({ mode: 'detach' });
   });
+
+  mainWindow.on('maximize', emitWindowState);
+  mainWindow.on('unmaximize', emitWindowState);
 
   // Bloquer toute navigation sortante (XSS / redirection malveillante)
   mainWindow.webContents.on('will-navigate', (e, url) => {
@@ -286,6 +351,9 @@ ipcMain.handle('win-maximize', () => {
   else mainWindow?.maximize();
 });
 ipcMain.handle('win-close', () => mainWindow?.close());
+ipcMain.handle('get-window-state', () => ({
+  isMaximized: mainWindow?.isMaximized() ?? false,
+}));
 
 // ─── IPC : CONFIG ─────────────────────────────────────────────────────────────
 
@@ -295,6 +363,11 @@ ipcMain.handle('set-config',  (_, updates) => saveConfig(updates));
 // ─── IPC : VERSION ────────────────────────────────────────────────────────────
 
 ipcMain.handle('get-version', () => app.getVersion());
+ipcMain.handle('copy-text', (_, text) => {
+  if (typeof text !== 'string' || !text.trim() || text.length > 4096) return false;
+  clipboard.writeText(text);
+  return true;
+});
 
 // ─── IPC : FIVEM ──────────────────────────────────────────────────────────────
 
@@ -319,7 +392,8 @@ ipcMain.handle('get-server-info', (_, { ip, port }) => fetchServerInfo({ ip, por
 
 ipcMain.handle('ping-server', async (_, { ip, port }) => {
   try {
-    const url   = `http://${ip}:${port}/info.json`;
+    const connection = normalizeConnection({ ip, port });
+    const url   = `http://${connection.ip}:${connection.port}/info.json`;
     const start = Date.now();
     const ctrl  = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 2500);
@@ -349,11 +423,14 @@ ipcMain.handle('open-external', async (_, url) => {
 
 ipcMain.handle('start-local-server', async () => {
   if (serverProcess) return { ok: false, error: 'Serveur déjà en cours.' };
+  if (!fs.existsSync(SERVER_DIR) || !fs.existsSync(SERVER_ENTRY)) {
+    return { ok: false, error: 'Répertoire serveur introuvable à côté du launcher.' };
+  }
 
   return new Promise((resolve) => {
     try {
-      serverProcess = spawn('node', ['../server/index.js'], {
-        cwd: path.join(__dirname, '../server'),
+      serverProcess = spawn('node', [SERVER_ENTRY], {
+        cwd: SERVER_DIR,
         stdio: 'pipe',
       });
 
